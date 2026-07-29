@@ -1,0 +1,9 @@
+# Not part of the web deployment. Listing them here keeps buildpack detection
+# and slug size away from an Electron app, the Go API this server replaces, and
+# the frontend sources (its built output is committed under frontend/dist).
+desktop/
+pkg/
+magefile.go
+docs/
+frontend/src/
+frontend/node_modules/

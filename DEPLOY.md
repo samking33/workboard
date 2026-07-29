@@ -22,8 +22,25 @@ directories that are *not* part of this deployment:
 - `desktop/` — the Electron wrapper. Irrelevant to a web deployment.
 - `pkg/`, `magefile.go` — the original Go API this server replaces.
 
-Point the build at the repo root (which has a `package.json` describing exactly
-the two commands above) rather than at `frontend/`.
+The repo tells the platform what to run in four places, so detection has no
+room to guess:
+
+| File | Purpose |
+|---|---|
+| `package.json` (root) | `build` and `start` scripts, npm only |
+| `Procfile` | `web: node server/src/index.js` |
+| `nixpacks.toml` | explicit install/build/start for nixpacks-based builders |
+| `.slugignore` | keeps `desktop/`, `pkg/` and `frontend/src/` out of detection |
+
+If your platform lets you set an **app root** or **base directory**, set it to
+the repository root — not `frontend/` and not `desktop/`.
+
+### If you see a pnpm version error
+
+It means the build is running in `frontend/` or `desktop/` rather than the root.
+`desktop/` is the Electron app: its `start` is `electron .`, which cannot serve
+a website even if its build succeeds. Making that build pass is not the fix —
+pointing the platform at the root is.
 
 ## Configuration
 

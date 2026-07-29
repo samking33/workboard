@@ -11,10 +11,11 @@
 	},
 	"homepage": "https://vikunja.io",
 	"scripts": {
-		"build:frontend": "cd ../frontend && pnpm run build && cd ../desktop && rm -rf frontend && cp -r ../frontend/dist frontend",
+		"build:frontend": "rm -rf frontend && cp -r ../frontend/dist frontend",
 		"start": "electron .",
 		"pack": "electron-builder --dir",
-		"dist": "electron-builder --publish never"
+		"dist": "electron-builder --publish never",
+		"build:frontend:fresh": "cd ../frontend && npm exec -- vite build && cd ../desktop && npm run build:frontend"
 	},
 	"build": {
 		"appId": "io.vikunja.desktop",
