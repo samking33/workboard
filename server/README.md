@@ -1,6 +1,6 @@
 # FSOC — Node.js server
 
-A Node.js replacement for the Go API, in progress.
+A Node.js replacement for the Go API.
 
 ## Why this shape
 
@@ -35,15 +35,37 @@ What is being replaced is only the API layer.
 | Storage: list, link, upload, download, preview, rename, delete | done |
 | Sharing: project users, teams, link shares, user search | done |
 | API tokens (hashed, shown once), notifications, saved filters | done |
+| Task positions, drag reordering, done ↔ done-bucket sync | done |
+| Filter DSL: fields, operators, `&&`/`\|\|`, parentheses, sorting | done |
+| Webhooks: HMAC-SHA256 signed, behind an SSRF guard | done |
+| Email, in-app notifications, @mentions | done |
+| Background jobs: reminders, overdue digest, repeating tasks, deletions | done |
+| Realtime WebSocket (`/api/v1/ws`) | done |
+| Data export (gzip) and scheduled account deletion | done |
+| Imports: CSV, FSOC/Vikunja export, Trello, TickTick, WeKan | done |
+| CalDAV (VTODO) with scoped tokens | done |
+| Link shares: public auth, password-protected, scoped to one project | done |
 | Avatars | generated initials |
-| Task positions / drag reordering | not ported |
-| Filter DSL beyond `done` | not ported |
-| CalDAV, webhooks, imports (Todoist/Trello/CSV), Unsplash backgrounds | not ported |
-| Data export/deletion, email sending, cron reminders | not ported |
-| Plugin system (yaegi) | cannot port — it is a Go interpreter |
+| Imports: Todoist, Microsoft Todo | not ported — they need OAuth apps registered with those services |
+| Unsplash project backgrounds | not ported — needs an Unsplash API key |
+| Plugin system (yaegi) | cannot port — it is a Go source interpreter |
 
-Everything the web client uses day to day works. The unported rows are either
-separate protocols, background jobs, or integrations; the app runs without them.
+Everything the web client uses works. The three unported rows each depend on a
+third-party credential or a Go-specific runtime, not on missing work here.
+
+## Testing
+
+Verified against the real Vue client in a browser, not only through the API —
+several bugs were only visible that way: the kanban view has to answer with
+buckets rather than tasks, the client gates its write controls on
+`max_permission` from the project list, and its filter grammar uses parentheses
+and `due_date` spelling that a simpler parser rejected.
+
+Security behaviour proven rather than assumed: HTML uploaded as `image/png` and
+scripted SVG are refused (415); a share link cannot reach anything but its one
+project; a CalDAV token cannot authenticate a different user; webhook targets
+resolving to private or loopback addresses are refused; and a link-share token
+cannot be mistaken for the user whose id matches its share id.
 
 ## Differences from the Go server, on purpose
 
@@ -54,6 +76,14 @@ separate protocols, background jobs, or integrations; the app runs without them.
   where the Go server previewed it through `<img>`.
 - **Refresh tokens are an HttpOnly cookie**, rotated on every use, and an access
   token is rejected if presented as one.
+- **Reminders are deduped against the notifications table**, not a one-minute
+  window. The Go server looks for reminders falling inside the current tick, so
+  a missed tick drops that reminder silently; here a late tick still sends.
+- **Webhook secrets are generated, never accepted from the client**, and are
+  returned exactly once — listing webhooks never discloses them.
+- **Deleting a project cascades.** Nothing in the schema has foreign keys, so
+  removing only the project row would leave its tasks, board, shares and files
+  behind as unreachable rows and orphaned blobs.
 
 ## Run
 
@@ -67,4 +97,17 @@ env VIKUNJA_SERVICE_SECRET=... \
     PORT=3457 npm start
 ```
 
-Serves the API on `/api/v1` and the built frontend from `../frontend/dist`.
+Serves the API on `/api/v1`, storage on `/api/v2`, CalDAV on `/dav`, the
+realtime socket on `/api/v1/ws`, and the built frontend from `../frontend/dist`.
+
+### Optional configuration
+
+| Variable | Default | Effect |
+|---|---|---|
+| `VIKUNJA_MAILER_ENABLED` | `false` | Turns on outgoing email. Everything still works without it — notifications just stay in-app. |
+| `VIKUNJA_MAILER_HOST` / `_PORT` / `_USERNAME` / `_PASSWORD` | — | SMTP relay. Port 465 implies TLS; anything else negotiates STARTTLS. |
+| `VIKUNJA_MAILER_FROMEMAIL` | `noreply@localhost` | From address. |
+| `VIKUNJA_MAILER_SKIPTLSVERIFY` | `false` | Only for an internal relay with a self-signed certificate — it disables checking the relay is who it claims. |
+| `VIKUNJA_WEBHOOKS_TIMEOUTSECONDS` | `30` | How long a webhook target may take to respond. |
+| `VIKUNJA_OUTGOINGREQUESTS_ALLOWNONROUTABLEIPS` | `false` | Lets webhooks reach private addresses. **With it on, a user-supplied webhook URL can reach anything the server can, including cloud metadata endpoints.** Only enable when receivers are on the same trusted network. |
+| `VIKUNJA_SERVICE_ENABLEREGISTRATION` | `false` | Public sign-up. |
