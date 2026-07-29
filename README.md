@@ -30,11 +30,10 @@ deploy/              Everything needed to run it in production
 
 Requires Go 1.26+, Node 24+ and pnpm 11.x.
 
-`package.json` pins pnpm `11.13.1`. Any 11.x works — `frontend/.npmrc` sets
-`pm-on-fail=warn` so a different patch release warns instead of aborting with
-*"This project is configured to use 11.13.1 of pnpm"*. If you hit that error
-outside the build script, either run the script (it handles this) or use
-`pnpm install --frozen-lockfile --pm-on-fail=warn`.
+Upstream pinned an exact pnpm patch version via `packageManager`, which made
+every machine on a different 11.x fail with *"This project is configured to use
+11.13.1 of pnpm"*. That pin is removed — `pnpm-lock.yaml` is what reproduces the
+dependency tree, and it is compatible across 11.x.
 
 ```bash
 TARGET=linux/amd64 ./deploy/build-release.sh
