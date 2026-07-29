@@ -12,6 +12,8 @@ import {
 	visibleProjectIds,
 } from '../lib/permissions.js'
 import {shapeTask, shapeTasks} from '../lib/shape.js'
+import {notify, taskUrl} from '../lib/notify.js'
+import {rollRepeatingTask} from '../lib/repeat.js'
 import {dispatchWebhook} from '../lib/webhooks.js'
 import {
 	attachmentsForTask,
@@ -406,6 +408,11 @@ tasksRouter.post('/tasks/:task(\\d+)', async (req, res, next) => {
 		// keeps showing it as in progress.
 		if (req.body?.done !== undefined) {
 			await syncDoneBucket(taskId, found.task.project_id, Boolean(req.body.done))
+			// A repeating task reappears with its next set of dates rather than
+			// staying completed.
+			if (req.body.done) {
+				await rollRepeatingTask(taskId)
+			}
 		}
 
 		const row = await one('SELECT * FROM tasks WHERE id = ?', [taskId])
@@ -504,6 +511,22 @@ tasksRouter.put('/tasks/:task(\\d+)/assignees', async (req, res, next) => {
 		)
 		dispatchWebhook(found.task.project_id, 'task.assignee.created',
 			{task_id: taskId, user_id: userId}, req.user)
+
+		// Being given a task is the one thing people most need to hear about, so
+		// it notifies even when the assigner is assigning to themselves elsewhere.
+		if (userId !== req.user.id) {
+			await notify(
+				userId,
+				'task.assigned',
+				{task: {id: taskId, title: found.task.title}, doer: {id: req.user.id, username: req.user.username}},
+				{
+					subject: `${req.user.username} assigned you "${found.task.title}"`,
+					heading: 'A task was assigned to you',
+					lines: [`${req.user.username} assigned you "${found.task.title}".`],
+					action: {label: 'Open the task', url: taskUrl(taskId)},
+				},
+			)
+		}
 		return res.status(201).json({user_id: userId, created: new Date()})
 	} catch (err) {
 		return next(err)

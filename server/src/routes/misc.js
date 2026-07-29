@@ -3,6 +3,7 @@ import express from 'express'
 import {requireAuth} from '../lib/auth.js'
 import {one, query} from '../lib/db.js'
 import {PERMISSION_READ, PERMISSION_WRITE, requireProject} from '../lib/permissions.js'
+import {rollRepeatingTask} from '../lib/repeat.js'
 import {shapeLabel, shapeTasks} from '../lib/shape.js'
 
 export const miscRouter = express.Router()
@@ -307,6 +308,9 @@ miscRouter.post(
 					 updated = UTC_TIMESTAMP() WHERE id = ? AND done <> ?`,
 					[nowDone ? 1 : 0, taskId, nowDone ? 1 : 0],
 				)
+				if (nowDone) {
+					await rollRepeatingTask(taskId)
+				}
 			}
 
 			return res.json({task_id: taskId, bucket_id: bucketId, project_view_id: viewId})

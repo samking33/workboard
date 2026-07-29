@@ -6,7 +6,9 @@ import cors from 'cors'
 import express from 'express'
 
 import {config} from './lib/config.js'
+import {startCron} from './lib/cron.js'
 import {ping} from './lib/db.js'
+import {accountRouter} from './routes/account.js'
 import {authRouter} from './routes/auth.js'
 import {extrasRouter} from './routes/extras.js'
 import {miscRouter} from './routes/misc.js'
@@ -58,6 +60,7 @@ api.use(sharingRouter)
 api.use(miscRouter)
 api.use(extrasRouter)
 api.use(webhooksRouter)
+api.use(accountRouter)
 
 app.use('/api/v1', api)
 
@@ -90,6 +93,7 @@ const server = app.listen(config.port, async () => {
 	} catch (err) {
 		console.error('[fsoc] cannot reach the database:', err.message)
 	}
+	startCron()
 	console.log(`[fsoc] listening on http://localhost:${config.port}`)
 	console.log(`[fsoc] serving frontend from ${frontendDir}`)
 })

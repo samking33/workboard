@@ -356,7 +356,7 @@ projectsRouter.delete(
 	},
 )
 
-async function deleteProjectCascade(projectId) {
+export async function deleteProjectCascade(projectId) {
 	const fileIds = []
 
 	const storage = await query('SELECT file_id FROM storage_items WHERE project_id = ? AND file_id > 0', [projectId])

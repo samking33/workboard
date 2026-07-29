@@ -8,12 +8,79 @@ import multer from 'multer'
 import {requireAuth} from '../lib/auth.js'
 import {config} from '../lib/config.js'
 import {one, query} from '../lib/db.js'
+import {notify, taskAudience, taskUrl} from '../lib/notify.js'
 import {PERMISSION_READ, PERMISSION_WRITE, canReadProject, canWriteProject} from '../lib/permissions.js'
 import {shapeUser} from '../lib/shape.js'
 import {sniffMime} from '../lib/sniff.js'
+import {dispatchWebhook} from '../lib/webhooks.js'
 
 export const taskDetailRouter = express.Router()
 taskDetailRouter.use(requireAuth)
+
+/** Everyone @mentioned in the text who can actually see the task. */
+async function mentionedUsers(text, projectId) {
+	const names = [...new Set([...String(text).matchAll(/@([a-zA-Z0-9._-]{2,60})/g)].map(m => m[1]))]
+	if (names.length === 0) {
+		return []
+	}
+
+	const ph = names.map(() => '?').join(',')
+	// Scoped to people with access: mentioning someone should not tell them a
+	// task exists in a project they cannot open.
+	const rows = await query(
+		`SELECT DISTINCT u.id, u.username FROM users u
+		 WHERE u.username IN (${ph}) AND (
+		   EXISTS (SELECT 1 FROM projects p WHERE p.id = ? AND p.owner_id = u.id)
+		   OR EXISTS (SELECT 1 FROM users_projects up WHERE up.project_id = ? AND up.user_id = u.id)
+		   OR EXISTS (SELECT 1 FROM team_projects tp JOIN team_members tm ON tm.team_id = tp.team_id
+		              WHERE tp.project_id = ? AND tm.user_id = u.id))`,
+		[...names, projectId, projectId, projectId],
+	)
+	return rows
+}
+
+/**
+ * A mention wins over the general comment notification, so someone named in a
+ * comment gets one message about it rather than two.
+ */
+async function notifyComment(task, comment, actor) {
+	const mentioned = await mentionedUsers(comment.comment, task.project_id)
+	const mentionedIds = new Set(mentioned.map(m => m.id))
+
+	for (const m of mentioned) {
+		if (m.id === actor.id) {
+			continue
+		}
+		await notify(
+			m.id,
+			'task.mentioned',
+			{task: {id: task.id, title: task.title}, comment: {id: comment.id}, doer: {id: actor.id, username: actor.username}},
+			{
+				subject: `${actor.username} mentioned you in "${task.title}"`,
+				heading: 'You were mentioned in a comment',
+				lines: [`${actor.username} wrote:`, comment.comment.slice(0, 500)],
+				action: {label: 'Open the task', url: taskUrl(task.id)},
+			},
+		)
+	}
+
+	for (const userId of await taskAudience(task.id, actor.id)) {
+		if (mentionedIds.has(userId)) {
+			continue
+		}
+		await notify(
+			userId,
+			'task.comment',
+			{task: {id: task.id, title: task.title}, comment: {id: comment.id}, doer: {id: actor.id, username: actor.username}},
+			{
+				subject: `New comment on "${task.title}"`,
+				heading: `${actor.username} commented`,
+				lines: [comment.comment.slice(0, 500)],
+				action: {label: 'Open the task', url: taskUrl(task.id)},
+			},
+		)
+	}
+}
 
 const upload = multer({
 	storage: multer.memoryStorage(),
@@ -92,6 +159,11 @@ taskDetailRouter.put('/tasks/:task(\\d+)/comments', async (req, res, next) => {
 		)
 		const row = await one('SELECT * FROM task_comments WHERE id = ?', [result.insertId])
 		const author = await one('SELECT id, username, name, email, created, updated FROM users WHERE id = ?', [req.user.id])
+
+		dispatchWebhook(found.task.project_id, 'task.comment.created',
+			{task: {id: found.task.id, title: found.task.title}, comment: {id: row.id, comment}}, req.user)
+		await notifyComment(found.task, row, req.user)
+
 		return res.status(201).json({...row, author: shapeUser(author), reactions: {}})
 	} catch (err) {
 		return next(err)
