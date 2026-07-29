@@ -28,7 +28,13 @@ deploy/              Everything needed to run it in production
 
 ## Build
 
-Requires Go 1.26+, Node 24+ and pnpm.
+Requires Go 1.26+, Node 24+ and pnpm 11.x.
+
+`package.json` pins pnpm `11.13.1`. Any 11.x works — `frontend/.npmrc` sets
+`pm-on-fail=warn` so a different patch release warns instead of aborting with
+*"This project is configured to use 11.13.1 of pnpm"*. If you hit that error
+outside the build script, either run the script (it handles this) or use
+`pnpm install --frozen-lockfile --pm-on-fail=warn`.
 
 ```bash
 TARGET=linux/amd64 ./deploy/build-release.sh

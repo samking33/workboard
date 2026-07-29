@@ -22,6 +22,15 @@ fi
 
 echo "==> frontend"
 pushd frontend >/dev/null
+
+# package.json pins pnpm 11.13.1. Under corepack that pin is enforced exactly and
+# pnpm refuses to self-switch, so a machine with any other 11.x fails with
+# "This project is configured to use 11.13.1 of pnpm". The lockfile is what
+# actually decides the dependency tree, and it is compatible across 11.x, so
+# relax the strict match rather than forcing everyone onto one patch release.
+export COREPACK_ENABLE_STRICT=0
+
+# --frozen-lockfile is kept: the build must never silently resolve new versions.
 pnpm install --frozen-lockfile
 pnpm build
 popd >/dev/null
