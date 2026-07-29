@@ -87,6 +87,34 @@ mysql -h NEW_HOST -u USER -p NEW_DB < data.sql
 Existing bcrypt password hashes move with the rows, so nobody has to reset
 anything.
 
+Do **not** carry these tables across — they are machine-local, and moving them
+means old credentials keep working somewhere they should not:
+
+| Table | Why not |
+|---|---|
+| `sessions` | login sessions from the old host |
+| `api_tokens` | live credentials scoped to the old instance |
+| `totp` | 2FA secrets; a mismatched one locks the account out |
+| `user_tokens` | password-reset and CalDAV tokens |
+| `migration` | already written by `schema.sql` |
+| `migration_status`, `license_status` | local bookkeeping |
+
+### Uploaded files
+
+Attachments, storage items and avatars are rows in `files` pointing at blobs on
+disk under `VIKUNJA_FILES_BASEPATH`. The database rows travel with the dump; the
+blobs do not. Copy that directory to the new server and point
+`VIKUNJA_FILES_BASEPATH` at it, or the app will list files it cannot serve.
+
+```bash
+tar -czf files.tar.gz -C /path/above files
+scp files.tar.gz user@server:/tmp/
+ssh user@server 'tar -xzf /tmp/files.tar.gz -C /var/lib/fsoc/'
+```
+
+The blob filename is the `files.id`, so the directory is only meaningful
+alongside the database it came from.
+
 ## Configuration
 
 Set these as environment variables. Never commit them.
