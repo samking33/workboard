@@ -98,7 +98,7 @@ projectsRouter.get('/projects', async (req, res, next) => {
 })
 
 projectsRouter.get(
-	'/projects/:project',
+	'/projects/:project(\\d+)',
 	requireProject(PERMISSION_READ),
 	async (req, res, next) => {
 		try {
@@ -115,7 +115,7 @@ projectsRouter.get(
 )
 
 projectsRouter.get(
-	'/projects/:project/views',
+	'/projects/:project(\\d+)/views',
 	requireProject(PERMISSION_READ),
 	async (req, res, next) => {
 		try {
@@ -156,7 +156,7 @@ projectsRouter.put('/projects', async (req, res, next) => {
 })
 
 projectsRouter.post(
-	'/projects/:project',
+	'/projects/:project(\\d+)',
 	requireProject(PERMISSION_WRITE),
 	async (req, res, next) => {
 		try {
@@ -183,7 +183,7 @@ projectsRouter.post(
 )
 
 projectsRouter.delete(
-	'/projects/:project',
+	'/projects/:project(\\d+)',
 	requireProject(PERMISSION_ADMIN),
 	async (req, res, next) => {
 		try {

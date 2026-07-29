@@ -98,7 +98,7 @@ function blobPath(fileId) {
 }
 
 storageRouter.get(
-	'/projects/:project/storage',
+	'/projects/:project(\\d+)/storage',
 	requireProject(PERMISSION_READ),
 	async (req, res, next) => {
 		try {
@@ -115,7 +115,7 @@ storageRouter.get(
 )
 
 storageRouter.post(
-	'/projects/:project/storage',
+	'/projects/:project(\\d+)/storage',
 	requireProject(PERMISSION_WRITE),
 	async (req, res, next) => {
 		try {
@@ -151,7 +151,7 @@ storageRouter.post(
 )
 
 storageRouter.post(
-	'/projects/:project/storage/upload',
+	'/projects/:project(\\d+)/storage/upload',
 	requireProject(PERMISSION_WRITE),
 	upload.array('files'),
 	async (req, res, next) => {
@@ -239,7 +239,7 @@ async function sendBlob(res, item, {inline}) {
 }
 
 storageRouter.get(
-	'/projects/:project/storage/:item/download',
+	'/projects/:project(\\d+)/storage/:item(\\d+)/download',
 	requireProject(PERMISSION_READ),
 	async (req, res, next) => {
 		try {
@@ -258,7 +258,7 @@ storageRouter.get(
 )
 
 storageRouter.get(
-	'/projects/:project/storage/:item/preview',
+	'/projects/:project(\\d+)/storage/:item(\\d+)/preview',
 	requireProject(PERMISSION_READ),
 	async (req, res, next) => {
 		try {
@@ -282,7 +282,7 @@ storageRouter.get(
 )
 
 storageRouter.put(
-	'/projects/:project/storage/:item',
+	'/projects/:project(\\d+)/storage/:item(\\d+)',
 	requireProject(PERMISSION_WRITE),
 	async (req, res, next) => {
 		try {
@@ -310,7 +310,7 @@ storageRouter.put(
 )
 
 storageRouter.delete(
-	'/projects/:project/storage/:item',
+	'/projects/:project(\\d+)/storage/:item(\\d+)',
 	requireProject(PERMISSION_WRITE),
 	async (req, res, next) => {
 		try {

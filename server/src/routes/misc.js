@@ -52,7 +52,7 @@ miscRouter.put('/labels', async (req, res, next) => {
 	}
 })
 
-miscRouter.delete('/labels/:label', async (req, res, next) => {
+miscRouter.delete('/labels/:label(\\d+)', async (req, res, next) => {
 	try {
 		const label = await one('SELECT * FROM labels WHERE id = ?', [Number(req.params.label)])
 		if (!label) {
@@ -73,7 +73,7 @@ miscRouter.delete('/labels/:label', async (req, res, next) => {
 // --- kanban buckets ----------------------------------------------------
 
 miscRouter.get(
-	'/projects/:project/views/:view/buckets',
+	'/projects/:project(\\d+)/views/:view(\\d+)/buckets',
 	requireProject(PERMISSION_READ),
 	async (req, res, next) => {
 		try {
@@ -110,7 +110,7 @@ miscRouter.get(
 )
 
 miscRouter.put(
-	'/projects/:project/views/:view/buckets',
+	'/projects/:project(\\d+)/views/:view(\\d+)/buckets',
 	requireProject(PERMISSION_WRITE),
 	async (req, res, next) => {
 		try {
@@ -139,7 +139,7 @@ miscRouter.put(
 
 // Moving a card between columns.
 miscRouter.post(
-	'/projects/:project/views/:view/buckets/:bucket/tasks',
+	'/projects/:project(\\d+)/views/:view(\\d+)/buckets/:bucket(\\d+)/tasks',
 	requireProject(PERMISSION_WRITE),
 	async (req, res, next) => {
 		try {

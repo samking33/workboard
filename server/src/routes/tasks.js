@@ -11,6 +11,12 @@ import {
 	visibleProjectIds,
 } from '../lib/permissions.js'
 import {shapeTask, shapeTasks} from '../lib/shape.js'
+import {
+	attachmentsForTask,
+	relationsForTask,
+	remindersForTask,
+	replaceReminders,
+} from './taskDetail.js'
 
 export const tasksRouter = express.Router()
 tasksRouter.use(requireAuth)
@@ -46,7 +52,7 @@ async function loadTaskFor(userId, taskId, level) {
 // --- tasks in a project ------------------------------------------------
 
 tasksRouter.get(
-	'/projects/:project/tasks',
+	'/projects/:project(\\d+)/tasks',
 	requireProject(PERMISSION_READ),
 	async (req, res, next) => {
 		try {
@@ -67,7 +73,7 @@ tasksRouter.get(
 // The client fetches a view's tasks through the view, so buckets and positions
 // can come back with them.
 tasksRouter.get(
-	'/projects/:project/views/:view/tasks',
+	'/projects/:project(\\d+)/views/:view(\\d+)/tasks',
 	requireProject(PERMISSION_READ),
 	async (req, res, next) => {
 		try {
@@ -157,13 +163,18 @@ tasksRouter.get(['/tasks', '/tasks/all'], async (req, res, next) => {
 
 // --- single task -------------------------------------------------------
 
-tasksRouter.get('/tasks/:task', async (req, res, next) => {
+tasksRouter.get('/tasks/:task(\\d+)', async (req, res, next) => {
 	try {
 		const found = await loadTaskFor(req.user.id, Number(req.params.task), PERMISSION_READ)
 		if (found.status) {
 			return res.status(found.status).json({message: found.message})
 		}
 		const [shaped] = await shapeTasks([found.task])
+		// Only the single-task read loads these: doing it per row would mean
+		// three extra queries for every task in a 250-row list page.
+		shaped.related_tasks = await relationsForTask(found.task.id)
+		shaped.reminders = await remindersForTask(found.task.id)
+		shaped.attachments = await attachmentsForTask(found.task.id)
 		return res.json(shaped)
 	} catch (err) {
 		return next(err)
@@ -171,7 +182,7 @@ tasksRouter.get('/tasks/:task', async (req, res, next) => {
 })
 
 tasksRouter.put(
-	'/projects/:project/tasks',
+	'/projects/:project(\\d+)/tasks',
 	requireProject(PERMISSION_WRITE),
 	async (req, res, next) => {
 		try {
@@ -215,9 +226,11 @@ const UPDATABLE = {
 	priority: 'priority',
 	percent_done: 'percent_done',
 	hex_color: 'hex_color',
+	repeat_after: 'repeat_after',
+	repeat_mode: 'repeat_mode',
 }
 
-tasksRouter.post('/tasks/:task', async (req, res, next) => {
+tasksRouter.post('/tasks/:task(\\d+)', async (req, res, next) => {
 	try {
 		const taskId = Number(req.params.task)
 		const found = await loadTaskFor(req.user.id, taskId, PERMISSION_WRITE)
@@ -249,15 +262,23 @@ tasksRouter.post('/tasks/:task', async (req, res, next) => {
 			await query(`UPDATE tasks SET ${sets.join(', ')} WHERE id = ?`, [...params, taskId])
 		}
 
+		// The client sends the whole reminder set, so replace rather than merge.
+		if (Array.isArray(req.body?.reminders)) {
+			await replaceReminders(taskId, req.body.reminders)
+		}
+
 		const row = await one('SELECT * FROM tasks WHERE id = ?', [taskId])
 		const [shaped] = await shapeTasks([row])
+		shaped.related_tasks = await relationsForTask(taskId)
+		shaped.reminders = await remindersForTask(taskId)
+		shaped.attachments = await attachmentsForTask(taskId)
 		return res.json(shaped)
 	} catch (err) {
 		return next(err)
 	}
 })
 
-tasksRouter.delete('/tasks/:task', async (req, res, next) => {
+tasksRouter.delete('/tasks/:task(\\d+)', async (req, res, next) => {
 	try {
 		const taskId = Number(req.params.task)
 		const found = await loadTaskFor(req.user.id, taskId, PERMISSION_WRITE)
@@ -276,7 +297,7 @@ tasksRouter.delete('/tasks/:task', async (req, res, next) => {
 
 // --- assignees ---------------------------------------------------------
 
-tasksRouter.put('/tasks/:task/assignees', async (req, res, next) => {
+tasksRouter.put('/tasks/:task(\\d+)/assignees', async (req, res, next) => {
 	try {
 		const taskId = Number(req.params.task)
 		const found = await loadTaskFor(req.user.id, taskId, PERMISSION_WRITE)
@@ -306,7 +327,7 @@ tasksRouter.put('/tasks/:task/assignees', async (req, res, next) => {
 	}
 })
 
-tasksRouter.delete('/tasks/:task/assignees/:user', async (req, res, next) => {
+tasksRouter.delete('/tasks/:task(\\d+)/assignees/:user(\\d+)', async (req, res, next) => {
 	try {
 		const taskId = Number(req.params.task)
 		const found = await loadTaskFor(req.user.id, taskId, PERMISSION_WRITE)
@@ -324,7 +345,7 @@ tasksRouter.delete('/tasks/:task/assignees/:user', async (req, res, next) => {
 
 // --- labels on a task --------------------------------------------------
 
-tasksRouter.put('/tasks/:task/labels', async (req, res, next) => {
+tasksRouter.put('/tasks/:task(\\d+)/labels', async (req, res, next) => {
 	try {
 		const taskId = Number(req.params.task)
 		const found = await loadTaskFor(req.user.id, taskId, PERMISSION_WRITE)
@@ -349,7 +370,7 @@ tasksRouter.put('/tasks/:task/labels', async (req, res, next) => {
 	}
 })
 
-tasksRouter.delete('/tasks/:task/labels/:label', async (req, res, next) => {
+tasksRouter.delete('/tasks/:task(\\d+)/labels/:label(\\d+)', async (req, res, next) => {
 	try {
 		const taskId = Number(req.params.task)
 		const found = await loadTaskFor(req.user.id, taskId, PERMISSION_WRITE)

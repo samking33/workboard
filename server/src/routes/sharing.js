@@ -11,7 +11,7 @@ sharingRouter.use(requireAuth)
 // --- who can reach a project ------------------------------------------
 
 sharingRouter.get(
-	'/projects/:project/users',
+	'/projects/:project(\\d+)/users',
 	requireProject(PERMISSION_READ),
 	async (req, res, next) => {
 		try {
@@ -31,7 +31,7 @@ sharingRouter.get(
 // Only admins may change who has access — anything less and a member could
 // grant themselves more, or quietly add someone.
 sharingRouter.put(
-	'/projects/:project/users',
+	'/projects/:project(\\d+)/users',
 	requireProject(PERMISSION_ADMIN),
 	async (req, res, next) => {
 		try {
@@ -68,7 +68,7 @@ sharingRouter.put(
 )
 
 sharingRouter.post(
-	'/projects/:project/users/:user',
+	'/projects/:project(\\d+)/users/:user(\\d+)',
 	requireProject(PERMISSION_ADMIN),
 	async (req, res, next) => {
 		try {
@@ -95,7 +95,7 @@ sharingRouter.post(
 )
 
 sharingRouter.delete(
-	'/projects/:project/users/:user',
+	'/projects/:project(\\d+)/users/:user(\\d+)',
 	requireProject(PERMISSION_ADMIN),
 	async (req, res, next) => {
 		try {
@@ -117,7 +117,7 @@ sharingRouter.delete(
 // --- teams on a project -----------------------------------------------
 
 sharingRouter.get(
-	'/projects/:project/teams',
+	'/projects/:project(\\d+)/teams',
 	requireProject(PERMISSION_READ),
 	async (req, res, next) => {
 		try {
@@ -135,7 +135,7 @@ sharingRouter.get(
 )
 
 sharingRouter.put(
-	'/projects/:project/teams',
+	'/projects/:project(\\d+)/teams',
 	requireProject(PERMISSION_ADMIN),
 	async (req, res, next) => {
 		try {
@@ -159,7 +159,7 @@ sharingRouter.put(
 )
 
 sharingRouter.delete(
-	'/projects/:project/teams/:team',
+	'/projects/:project(\\d+)/teams/:team(\\d+)',
 	requireProject(PERMISSION_ADMIN),
 	async (req, res, next) => {
 		try {
@@ -190,7 +190,7 @@ sharingRouter.get('/teams', async (req, res, next) => {
 	}
 })
 
-sharingRouter.get('/teams/:team', async (req, res, next) => {
+sharingRouter.get('/teams/:team(\\d+)', async (req, res, next) => {
 	try {
 		const teamId = Number(req.params.team)
 		const member = await one(

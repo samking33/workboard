@@ -8,10 +8,12 @@ import express from 'express'
 import {config} from './lib/config.js'
 import {ping} from './lib/db.js'
 import {authRouter} from './routes/auth.js'
+import {extrasRouter} from './routes/extras.js'
 import {miscRouter} from './routes/misc.js'
 import {projectsRouter} from './routes/projects.js'
 import {sharingRouter} from './routes/sharing.js'
 import {storageRouter} from './routes/storage.js'
+import {taskDetailRouter} from './routes/taskDetail.js'
 import {tasksRouter} from './routes/tasks.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -49,9 +51,11 @@ api.use(authRouter)
 // These apply requireAuth for the whole router — keep them after public routes.
 api.use(projectsRouter)
 api.use(tasksRouter)
+api.use(taskDetailRouter)
 api.use(storageRouter)
 api.use(sharingRouter)
 api.use(miscRouter)
+api.use(extrasRouter)
 
 app.use('/api/v1', api)
 

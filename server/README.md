@@ -22,22 +22,28 @@ What is being replaced is only the API layer.
 
 | Area | State |
 |---|---|
-| Auth: login, HttpOnly refresh cookie, `/user`, register, logout | done |
+| Auth: login, HttpOnly refresh cookie, register, logout, `/user` | done |
+| Two-factor (TOTP): enroll, enable, disable | done |
 | Permissions: owner / user share / team share | done |
-| Projects: list, read, create, update, delete, views | done |
-| Tasks: per project, per view, cross-project, CRUD | done |
-| Assignees, labels on tasks | done |
-| Kanban buckets, moving cards | done |
+| Projects: CRUD, views, archive, duplicate, favourite | done |
+| Tasks: per project, per view, cross-project, CRUD, bulk edit | done |
+| Assignees, labels, reminders, repeating, relations (both directions) | done |
+| Comments: create, edit, delete, author-only rules | done |
+| Attachments: upload, list, download, delete | done |
+| Reactions, subscriptions, favourites | done |
+| Kanban buckets, creating buckets, moving cards | done |
 | Storage: list, link, upload, download, preview, rename, delete | done |
-| Sharing: project users + teams, user search | done |
-| Notifications, saved filters (read), avatars | done |
-| Attachments on tasks, comments, relations, reminders | not ported |
-| Task positions/reordering, filters beyond `done` | not ported |
-| CalDAV, webhooks, subscriptions, imports, 2FA | not planned |
+| Sharing: project users, teams, link shares, user search | done |
+| API tokens (hashed, shown once), notifications, saved filters | done |
+| Avatars | generated initials |
+| Task positions / drag reordering | not ported |
+| Filter DSL beyond `done` | not ported |
+| CalDAV, webhooks, imports (Todoist/Trello/CSV), Unsplash backgrounds | not ported |
+| Data export/deletion, email sending, cron reminders | not ported |
+| Plugin system (yaegi) | cannot port — it is a Go interpreter |
 
-The app loads and works end to end: sign in, browse projects, see tasks with
-assignees and due dates, and use the storage view. The unported areas above are
-features of the task detail screen and will be missing or inert until done.
+Everything the web client uses day to day works. The unported rows are either
+separate protocols, background jobs, or integrations; the app runs without them.
 
 ## Differences from the Go server, on purpose
 
