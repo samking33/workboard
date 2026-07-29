@@ -45,13 +45,29 @@ What is being replaced is only the API layer.
 | Imports: CSV, FSOC/Vikunja export, Trello, TickTick, WeKan | done |
 | CalDAV (VTODO) with scoped tokens | done |
 | Link shares: public auth, password-protected, scoped to one project | done |
+| Admin panel: overview, users, projects, roles, status, owner transfer | done |
+| Teams: create, rename, delete, add/remove/promote members | done |
+| Saved filters, project view CRUD, task duplicate, bulk assignees/labels | done |
+| Time tracking: entries, running timer, per-task and per-project views | done |
+| Sessions list/revoke, email change, avatar upload, password reset by email | done |
+| Bot accounts (API-token identities that cannot sign in) | done |
+| Project background upload | done |
 | Avatars | generated initials |
 | Imports: Todoist, Microsoft Todo | not ported — they need OAuth apps registered with those services |
 | Unsplash project backgrounds | not ported — needs an Unsplash API key |
 | Plugin system (yaegi) | cannot port — it is a Go source interpreter |
 
-Everything the web client uses works. The three unported rows each depend on a
-third-party credential or a Go-specific runtime, not on missing work here.
+Every endpoint the web client calls is served. The three unported rows each
+depend on a third-party credential or a Go-specific runtime, not on missing
+work here.
+
+### Pro features
+
+Upstream Vikunja gates the admin panel and time tracking behind a licence. This
+server has no licence system and implements both, so `/info` advertises them in
+`enabled_pro_features` — that is what makes the client show them. If you ever
+run the upstream Go server against this database instead, those screens go back
+to being licence-gated.
 
 ## Testing
 

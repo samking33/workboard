@@ -5,12 +5,14 @@ import path from 'node:path'
 import zlib from 'node:zlib'
 
 import express from 'express'
+import multer from 'multer'
 
 import {requireAuth, requireRealUser, verifyPassword} from '../lib/auth.js'
 import {config} from '../lib/config.js'
 import {one, query, transaction} from '../lib/db.js'
 import {sendMail} from '../lib/mail.js'
 import {visibleProjectIds} from '../lib/permissions.js'
+import {sniffMime} from '../lib/sniff.js'
 
 export const accountRouter = express.Router()
 accountRouter.use(requireAuth)
@@ -331,3 +333,279 @@ accountRouter.post('/user/password', async (req, res, next) => {
 export function newConfirmationToken() {
 	return crypto.randomBytes(32).toString('hex')
 }
+
+// --- sessions ----------------------------------------------------------
+
+accountRouter.get('/user/sessions', async (req, res, next) => {
+	try {
+		const rows = await query(
+			`SELECT id, device_info, ip_address, is_long_session, last_active, created
+			 FROM sessions WHERE user_id = ? ORDER BY last_active DESC, id DESC`,
+			[req.user.id],
+		)
+		// token_hash is never returned: it is the credential itself.
+		return res.json(rows.map(r => ({
+			id: r.id,
+			device_info: r.device_info ?? '',
+			ip_address: r.ip_address ?? '',
+			is_long_session: Boolean(r.is_long_session),
+			last_active: r.last_active,
+			created: r.created,
+		})))
+	} catch (err) {
+		return next(err)
+	}
+})
+
+accountRouter.delete('/user/sessions/:id(\\d+)', async (req, res, next) => {
+	try {
+		// Scoped to the caller, so one user cannot revoke another's session.
+		const result = await query('DELETE FROM sessions WHERE id = ? AND user_id = ?',
+			[Number(req.params.id), req.user.id])
+		if (result.affectedRows === 0) {
+			return res.status(404).json({message: 'session not found'})
+		}
+		return res.json({message: 'session revoked'})
+	} catch (err) {
+		return next(err)
+	}
+})
+
+// --- email address -----------------------------------------------------
+
+accountRouter.post('/user/settings/email', async (req, res, next) => {
+	try {
+		// Changing the address is how an account is taken over if a session leaks,
+		// so it needs the password even though the request is authenticated.
+		if (!(await passwordMatches(req.user.id, req.body?.password))) {
+			return res.status(412).json({message: 'please confirm your password'})
+		}
+
+		const email = String(req.body?.new_email ?? '').trim()
+		if (!email.includes('@') || email.length > 250) {
+			return res.status(400).json({message: 'that does not look like an email address'})
+		}
+
+		const clash = await one('SELECT id FROM users WHERE email = ? AND id <> ?', [email, req.user.id])
+		if (clash) {
+			return res.status(409).json({message: 'that email address is already in use'})
+		}
+
+		await query('UPDATE users SET email = ?, updated = UTC_TIMESTAMP() WHERE id = ?', [email, req.user.id])
+		return res.json({message: 'email address updated'})
+	} catch (err) {
+		return next(err)
+	}
+})
+
+// --- avatar ------------------------------------------------------------
+
+const AVATAR_PROVIDERS = ['initials', 'gravatar', 'marble', 'upload', 'default']
+
+accountRouter.get('/user/settings/avatar', async (req, res, next) => {
+	try {
+		const user = await one('SELECT avatar_provider FROM users WHERE id = ?', [req.user.id])
+		return res.json({avatar_provider: user?.avatar_provider || 'initials'})
+	} catch (err) {
+		return next(err)
+	}
+})
+
+accountRouter.post('/user/settings/avatar', async (req, res, next) => {
+	try {
+		const provider = String(req.body?.avatar_provider ?? '').trim()
+		if (!AVATAR_PROVIDERS.includes(provider)) {
+			return res.status(400).json({message: `avatar_provider must be one of: ${AVATAR_PROVIDERS.join(', ')}`})
+		}
+
+		if (provider === 'upload') {
+			const user = await one('SELECT avatar_file_id FROM users WHERE id = ?', [req.user.id])
+			if (!user?.avatar_file_id) {
+				return res.status(400).json({message: 'upload an image before choosing that provider'})
+			}
+		}
+
+		await query('UPDATE users SET avatar_provider = ?, updated = UTC_TIMESTAMP() WHERE id = ?',
+			[provider, req.user.id])
+		return res.json({avatar_provider: provider})
+	} catch (err) {
+		return next(err)
+	}
+})
+
+const avatarUpload = multer({
+	storage: multer.memoryStorage(),
+	// An avatar is displayed at a few dozen pixels; anything large is a mistake
+	// or an attempt to fill the disk.
+	limits: {fileSize: 5 * 1024 * 1024},
+})
+
+accountRouter.put('/user/settings/avatar/upload', avatarUpload.any(), async (req, res, next) => {
+	try {
+		const file = req.file ?? (req.files ?? [])[0]
+		if (!file) {
+			return res.status(400).json({message: 'no image was uploaded'})
+		}
+
+		// Same rule as every other upload: the type comes from the bytes, never
+		// from the uploader, so an HTML payload cannot be stored as an image.
+		const mime = sniffMime(file.buffer)
+		if (!mime.startsWith('image/')) {
+			return res.status(415).json({message: 'that file is not an image'})
+		}
+
+		await fsp.mkdir(config.filesPath, {recursive: true})
+		const inserted = await query(
+			'INSERT INTO files (name, mime, size, created_by_id, created) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())',
+			[file.originalname, mime, file.size, req.user.id],
+		)
+		await fsp.writeFile(path.join(config.filesPath, String(inserted.insertId)), file.buffer)
+
+		const previous = await one('SELECT avatar_file_id FROM users WHERE id = ?', [req.user.id])
+		await query(
+			'UPDATE users SET avatar_file_id = ?, avatar_provider = \'upload\', updated = UTC_TIMESTAMP() WHERE id = ?',
+			[inserted.insertId, req.user.id],
+		)
+
+		// Replacing an avatar should not leave the old blob behind forever.
+		if (previous?.avatar_file_id) {
+			await query('DELETE FROM files WHERE id = ?', [previous.avatar_file_id]).catch(() => {})
+			await fsp.rm(path.join(config.filesPath, String(previous.avatar_file_id)), {force: true}).catch(() => {})
+		}
+
+		return res.json({message: 'avatar updated', avatar_provider: 'upload'})
+	} catch (err) {
+		return next(err)
+	}
+})
+
+// --- password reset by email -------------------------------------------
+
+const RESET_TOKEN_KIND = 1 // TokenPasswordReset in the Go enum
+const RESET_TTL_MS = 60 * 60 * 1000
+
+/**
+ * Stored hashed, like every other credential here, so a database read cannot
+ * mint a reset. Also used by the admin panel's "send reset email".
+ */
+export async function createPasswordResetToken(userId) {
+	const token = crypto.randomBytes(32).toString('hex')
+	const hash = crypto.createHash('sha256').update(token).digest('hex')
+
+	// Only the newest reset should work, otherwise an older leaked link stays live.
+	await query('DELETE FROM user_tokens WHERE user_id = ? AND kind = ?', [userId, RESET_TOKEN_KIND])
+	await query('INSERT INTO user_tokens (user_id, token, kind, created) VALUES (?, ?, ?, UTC_TIMESTAMP())',
+		[userId, hash, RESET_TOKEN_KIND])
+
+	return token
+}
+
+// Public: someone who has forgotten their password cannot be authenticated.
+export const publicAccountRouter = express.Router()
+
+publicAccountRouter.post('/user/password/token', async (req, res, next) => {
+	try {
+		const login = String(req.body?.username ?? req.body?.email ?? '').trim()
+		const user = login
+			? await one('SELECT id, email FROM users WHERE username = ? OR email = ?', [login, login])
+			: null
+
+		if (user?.email) {
+			const token = await createPasswordResetToken(user.id)
+			await sendMail({
+				to: user.email,
+				subject: 'Reset your FSOC password',
+				heading: 'Password reset',
+				lines: ['Use the link below to choose a new password. It expires in an hour.'],
+				action: {
+					label: 'Choose a new password',
+					url: new URL(`/password-reset?token=${token}`, config.publicUrl).toString(),
+				},
+			})
+		}
+
+		// Always the same answer: a different response for a known account would
+		// turn this endpoint into a way to test which usernames exist.
+		return res.json({message: 'if that account exists, a reset link has been sent'})
+	} catch (err) {
+		return next(err)
+	}
+})
+
+publicAccountRouter.post('/user/password/reset', async (req, res, next) => {
+	try {
+		const token = String(req.body?.token ?? '')
+		const newPassword = String(req.body?.new_password ?? '')
+
+		if (newPassword.length < 8 || Buffer.byteLength(newPassword) > 72) {
+			return res.status(400).json({message: 'the password must be at least 8 characters and at most 72 bytes'})
+		}
+
+		const hash = crypto.createHash('sha256').update(token).digest('hex')
+		const row = await one(
+			'SELECT id, user_id, created FROM user_tokens WHERE token = ? AND kind = ?',
+			[hash, RESET_TOKEN_KIND],
+		)
+		if (!row || Date.now() - new Date(row.created).getTime() > RESET_TTL_MS) {
+			return res.status(400).json({message: 'that reset link is invalid or has expired'})
+		}
+
+		const bcrypt = (await import('bcryptjs')).default
+		await query('UPDATE users SET password = ?, updated = UTC_TIMESTAMP() WHERE id = ?',
+			[await bcrypt.hash(newPassword, 11), row.user_id])
+
+		// The token is single-use, and every existing session predates the reset —
+		// if the account was compromised, this is what locks the intruder out.
+		await query('DELETE FROM user_tokens WHERE id = ?', [row.id])
+		await query('DELETE FROM sessions WHERE user_id = ?', [row.user_id]).catch(() => {})
+
+		return res.json({message: 'password changed, you can log in now'})
+	} catch (err) {
+		return next(err)
+	}
+})
+
+// --- email confirmation ------------------------------------------------
+
+const CONFIRM_TOKEN_KIND = 2 // TokenEmailConfirm
+
+publicAccountRouter.post('/user/confirm', async (req, res, next) => {
+	try {
+		const token = String(req.body?.token ?? '')
+		const hash = crypto.createHash('sha256').update(token).digest('hex')
+
+		const row = await one('SELECT id, user_id FROM user_tokens WHERE token = ? AND kind = ?',
+			[hash, CONFIRM_TOKEN_KIND])
+		if (!row) {
+			return res.status(400).json({message: 'that confirmation link is invalid'})
+		}
+
+		// status 0 is an active account.
+		await query('UPDATE users SET status = 0, updated = UTC_TIMESTAMP() WHERE id = ?', [row.user_id])
+		await query('DELETE FROM user_tokens WHERE id = ?', [row.id])
+
+		return res.json({message: 'email confirmed'})
+	} catch (err) {
+		return next(err)
+	}
+})
+
+publicAccountRouter.post('/user/deletion/confirm', async (req, res, next) => {
+	try {
+		const token = String(req.body?.token ?? '')
+		const hash = crypto.createHash('sha256').update(token).digest('hex')
+
+		const row = await one('SELECT id, user_id FROM user_tokens WHERE token = ? AND kind = 3', [hash])
+		if (!row) {
+			return res.status(400).json({message: 'that link is invalid or has already been used'})
+		}
+
+		const scheduled = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+		await query('UPDATE users SET deletion_scheduled_at = ? WHERE id = ?', [scheduled, row.user_id])
+		await query('DELETE FROM user_tokens WHERE id = ?', [row.id])
+
+		return res.json({message: 'deletion confirmed', scheduled_at: scheduled})
+	} catch (err) {
+		return next(err)
+	}
+})

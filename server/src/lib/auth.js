@@ -112,7 +112,7 @@ export async function hashPassword(plain) {
 
 export async function findUserByLogin(login) {
 	return one(
-		`SELECT id, username, email, name, password, status, is_admin, created, updated
+		`SELECT id, username, email, name, password, status, is_admin, bot_owner_id, created, updated
 		 FROM users WHERE username = ? OR email = ? LIMIT 1`,
 		[login, login],
 	)
@@ -187,6 +187,9 @@ export function publicUser(user) {
 		username: user.username,
 		email: user.email,
 		name: user.name ?? '',
+		// The client's admin-route guard reads this from /user rather than from
+		// the token, so leaving it out hides the admin panel from real admins.
+		is_admin: Boolean(user.is_admin),
 		created: user.created,
 		updated: user.updated,
 	}

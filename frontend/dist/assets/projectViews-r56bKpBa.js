@@ -1,1 +1,0 @@
-import{at as e}from"./router-BTyVpJOd.js";import{t}from"./abstractService-BFJOLCBY.js";var n=class extends t{constructor(){super({get:`/projects/{projectId}/views/{id}`,getAll:`/projects/{projectId}/views`,create:`/projects/{projectId}/views`,update:`/projects/{projectId}/views/{id}`,delete:`/projects/{projectId}/views/{id}`})}modelFactory(t){return new e(t)}};export{n as t};

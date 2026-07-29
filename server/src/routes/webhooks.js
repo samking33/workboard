@@ -178,3 +178,55 @@ webhooksRouter.delete(
 		}
 	},
 )
+
+// --- user-level webhooks -----------------------------------------------
+
+/**
+ * The settings page lists webhooks across every project the user administers,
+ * rather than per project. Same rows, filtered by what they can administer —
+ * so this can never show a webhook belonging to a project they cannot manage.
+ */
+webhooksRouter.get('/user/settings/webhooks/events', (req, res) => {
+	return res.json(WEBHOOK_EVENTS)
+})
+
+webhooksRouter.get('/user/settings/webhooks', async (req, res, next) => {
+	try {
+		const rows = await query(
+			`SELECT w.*, p.title AS project_title FROM webhooks w
+			 JOIN projects p ON p.id = w.project_id
+			 WHERE p.owner_id = ?
+			    OR EXISTS (SELECT 1 FROM users_projects up
+			               WHERE up.project_id = w.project_id AND up.user_id = ? AND up.permission = 2)
+			    OR EXISTS (SELECT 1 FROM team_projects tp JOIN team_members tm ON tm.team_id = tp.team_id
+			               WHERE tp.project_id = w.project_id AND tm.user_id = ? AND tp.permission = 2)
+			 ORDER BY w.id`,
+			[req.user.id, req.user.id, req.user.id],
+		)
+		return res.json(rows.map(r => ({...shapeWebhook(r), project_title: r.project_title})))
+	} catch (err) {
+		return next(err)
+	}
+})
+
+webhooksRouter.delete('/user/settings/webhooks/:webhook(\\d+)', async (req, res, next) => {
+	try {
+		const webhookId = Number(req.params.webhook)
+		// Re-checks admin on the owning project rather than trusting the id.
+		const hook = await one(
+			`SELECT w.id FROM webhooks w JOIN projects p ON p.id = w.project_id
+			 WHERE w.id = ? AND (p.owner_id = ?
+			    OR EXISTS (SELECT 1 FROM users_projects up
+			               WHERE up.project_id = w.project_id AND up.user_id = ? AND up.permission = 2))`,
+			[webhookId, req.user.id, req.user.id],
+		)
+		if (!hook) {
+			return res.status(404).json({message: 'webhook not found'})
+		}
+
+		await query('DELETE FROM webhooks WHERE id = ?', [webhookId])
+		return res.status(204).end()
+	} catch (err) {
+		return next(err)
+	}
+})

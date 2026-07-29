@@ -173,49 +173,6 @@ sharingRouter.delete(
 	},
 )
 
-// --- teams -------------------------------------------------------------
-
-sharingRouter.get('/teams', async (req, res, next) => {
-	try {
-		// Only teams the caller belongs to, or created.
-		const rows = await query(
-			`SELECT DISTINCT t.id, t.name, t.description, t.created_by_id, t.created, t.updated
-			 FROM teams t LEFT JOIN team_members tm ON tm.team_id = t.id
-			 WHERE tm.user_id = ? OR t.created_by_id = ?
-			 ORDER BY t.name`,
-			[req.user.id, req.user.id],
-		)
-		return res.json(rows)
-	} catch (err) {
-		return next(err)
-	}
-})
-
-sharingRouter.get('/teams/:team(\\d+)', async (req, res, next) => {
-	try {
-		const teamId = Number(req.params.team)
-		const member = await one(
-			`SELECT 1 AS ok FROM teams t LEFT JOIN team_members tm ON tm.team_id = t.id
-			 WHERE t.id = ? AND (tm.user_id = ? OR t.created_by_id = ?) LIMIT 1`,
-			[teamId, req.user.id, req.user.id],
-		)
-		if (!member) {
-			return res.status(403).json({message: 'forbidden'})
-		}
-
-		const team = await one('SELECT * FROM teams WHERE id = ?', [teamId])
-		const members = await query(
-			`SELECT u.id, u.username, u.name, u.email, u.created, u.updated, tm.admin
-			 FROM team_members tm JOIN users u ON u.id = tm.user_id
-			 WHERE tm.team_id = ? ORDER BY u.username`,
-			[teamId],
-		)
-		return res.json({...team, members: members.map(m => ({...shapeUser(m), admin: Boolean(m.admin)}))})
-	} catch (err) {
-		return next(err)
-	}
-})
-
 // --- user search (needed by the share dialog) -------------------------
 
 sharingRouter.get('/users', async (req, res, next) => {

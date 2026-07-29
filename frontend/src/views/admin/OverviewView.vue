@@ -63,7 +63,10 @@
 						{{ configStore.version }}
 					</p>
 				</div>
-				<div class="admin-overview__card admin-overview__card--wide">
+				<div
+					v-if="data.license.licensed"
+					class="admin-overview__card admin-overview__card--wide"
+				>
 					<h2 class="admin-overview__card-title">
 						{{ $t('admin.overview.license') }}
 					</h2>

@@ -9,10 +9,12 @@ import {config} from './lib/config.js'
 import {startCron} from './lib/cron.js'
 import {ping} from './lib/db.js'
 import {attachRealtime} from './lib/realtime.js'
-import {accountRouter} from './routes/account.js'
+import {accountRouter, publicAccountRouter} from './routes/account.js'
+import {adminRouter} from './routes/admin.js'
 import {authRouter} from './routes/auth.js'
 import {caldavRouter, caldavTokenRouter} from './routes/caldav.js'
 import {extrasRouter} from './routes/extras.js'
+import {extras2Router} from './routes/extras2.js'
 import {linkShareAuthRouter} from './routes/linkShareAuth.js'
 import {FILE_MIGRATORS, migrationRouter} from './routes/migration.js'
 import {miscRouter} from './routes/misc.js'
@@ -21,6 +23,7 @@ import {sharingRouter} from './routes/sharing.js'
 import {storageRouter} from './routes/storage.js'
 import {taskDetailRouter} from './routes/taskDetail.js'
 import {tasksRouter} from './routes/tasks.js'
+import {teamsRouter} from './routes/teams.js'
 import {webhooksRouter} from './routes/webhooks.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
@@ -64,7 +67,10 @@ api.get('/info', (_req, res) => {
 		// here is simply not offered.
 		available_migrators: FILE_MIGRATORS,
 		task_comments_enabled: true,
-		enabled_background_providers: [],
+		enabled_background_providers: ['upload'],
+		// The client hides the admin panel and time tracking unless the server
+		// says it serves them. This build implements both, so it says so.
+		enabled_pro_features: ['admin_panel', 'time_tracking'],
 		auth: {
 			local: {enabled: true, registration_enabled: config.registrationEnabled},
 			ldap: {enabled: false},
@@ -75,7 +81,19 @@ api.get('/info', (_req, res) => {
 
 // Public: holding the link is the credential, so this must sit ahead of every
 // router that applies requireAuth.
+// Public: a health check that needed a token could not detect a broken database.
+api.get('/health', async (_req, res) => {
+	try {
+		await ping()
+		return res.json({status: 'ok'})
+	} catch (err) {
+		return res.status(503).json({status: 'database unreachable', message: err.message})
+	}
+})
+
 api.use(linkShareAuthRouter)
+// Password reset and email confirmation: the caller has no session yet.
+api.use(publicAccountRouter)
 
 // authRouter guards its own routes individually, so it is safe anywhere.
 api.use(authRouter)
@@ -91,6 +109,9 @@ api.use(webhooksRouter)
 api.use(accountRouter)
 api.use(migrationRouter)
 api.use(caldavTokenRouter)
+api.use(teamsRouter)
+api.use(extras2Router)
+api.use(adminRouter)
 
 app.use('/api/v1', api)
 
@@ -98,6 +119,8 @@ app.use('/api/v1', api)
 // it), so the same routes are mounted there too rather than changing the client.
 const apiV2 = express.Router()
 apiV2.use(storageRouter)
+apiV2.use(adminRouter)
+apiV2.use(extras2Router)
 app.use('/api/v2', apiV2)
 
 // CalDAV lives outside /api: it does its own Basic auth and speaks XML, and the

@@ -43,6 +43,12 @@ authRouter.post('/login', async (req, res, next) => {
 		if (user.status !== STATUS_ACTIVE) {
 			return res.status(412).json({message: 'this account is disabled'})
 		}
+		// A bot exists to hold API tokens, not to be signed into. Its row has an
+		// empty password so this cannot currently pass anyway — the check is here
+		// so that stays true if a password is ever written to one.
+		if (user.bot_owner_id) {
+			return res.status(412).json({message: 'this is a bot account and cannot be signed into'})
+		}
 
 		setRefreshCookie(res, user, {secure: config.publicUrl.startsWith('https://')})
 		return res.json({token: signUserToken(user, {long: Boolean(longToken)})})
