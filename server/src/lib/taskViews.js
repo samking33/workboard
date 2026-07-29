@@ -46,3 +46,37 @@ export default async function addTaskToViews(taskId, projectId, index, done = fa
 		}
 	}
 }
+
+/**
+ * Moves an existing task's card to the done bucket, or back to the default one.
+ *
+ * Lives here rather than in the tasks route because ticking a task off in a list
+ * and dragging its card are the same state change seen from two places, and the
+ * board is wrong if only one of them updates.
+ */
+export async function syncDoneBucket(taskId, projectId, done) {
+	const views = await query(
+		'SELECT id, default_bucket_id, done_bucket_id FROM project_views WHERE project_id = ? AND view_kind = 3',
+		[projectId],
+	)
+
+	for (const view of views) {
+		let target = done ? view.done_bucket_id : view.default_bucket_id
+		if (!target) {
+			// A board built before done_bucket_id was set: fall back to the last
+			// column for done and the first for not-done.
+			const fallback = await one(
+				`SELECT id FROM buckets WHERE project_view_id = ? ORDER BY position ${done ? 'DESC' : 'ASC'}, id LIMIT 1`,
+				[view.id],
+			)
+			target = fallback?.id
+		}
+		if (target) {
+			await query(
+				`INSERT INTO task_buckets (bucket_id, task_id, project_view_id) VALUES (?, ?, ?)
+				 ON DUPLICATE KEY UPDATE bucket_id = VALUES(bucket_id)`,
+				[target, taskId, view.id],
+			)
+		}
+	}
+}

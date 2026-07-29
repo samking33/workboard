@@ -2,13 +2,15 @@
 	"name": "fsoc-workboard",
 	"version": "1.0.0",
 	"private": true,
-	"description": "FSOC Workboard — Node.js API plus the prebuilt web client",
+	"description": "FSOC Workboard \u2014 Node.js API plus the prebuilt web client",
 	"engines": {
 		"node": ">=20"
 	},
 	"scripts": {
 		"install-deps": "npm --prefix server install --omit=dev",
-		"build": "npm --prefix server install --omit=dev",
+		"build": "npm --prefix server install --omit=dev && npm --prefix server run db:init",
+		"db:init": "npm --prefix server run db:init",
+		"create-admin": "npm --prefix server run create-admin --",
 		"start": "node server/src/index.js"
 	}
 }

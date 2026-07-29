@@ -55,6 +55,38 @@ and that the app root is the repository root.
 always the database refusing the app server's IP — add it to the remote-access
 allowlist. `/api/v1/health` is the endpoint to point a monitor at.
 
+## A new or empty database
+
+The Go server built its schema through 129 migrations. This server has no
+migration runner, so a fresh database is created from `server/schema.sql`:
+
+```bash
+npm run db:init                                    # creates the 38 tables
+npm run create-admin -- alice alice@example.com 'a good password'
+```
+
+`db:init` runs automatically as part of `npm run build`, so a deploy against an
+empty database sets itself up. It is idempotent — every statement is
+`IF NOT EXISTS` or `INSERT IGNORE` — so it is safe on an existing database and
+reports "schema was already current".
+
+**Registration is off by default**, so without `create-admin` a new instance has
+no way to log in. The first account it makes is an administrator with an Inbox
+project. The password is an argument, so it lands in shell history: prefix the
+command with a space, or `unset HISTFILE` first.
+
+### Moving existing data to a new database
+
+`db:init` creates structure, not content. To carry data across:
+
+```bash
+mysqldump -h OLD_HOST -u USER -p --no-create-info --skip-extended-insert DB > data.sql
+mysql -h NEW_HOST -u USER -p NEW_DB < data.sql
+```
+
+Existing bcrypt password hashes move with the rows, so nobody has to reset
+anything.
+
 ## Configuration
 
 Set these as environment variables. Never commit them.

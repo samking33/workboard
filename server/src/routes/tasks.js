@@ -15,7 +15,7 @@ import {
 import {shapeTask, shapeTasks} from '../lib/shape.js'
 import {notify, taskUrl} from '../lib/notify.js'
 import {rollRepeatingTask} from '../lib/repeat.js'
-import addTaskToViews from '../lib/taskViews.js'
+import addTaskToViews, {syncDoneBucket} from '../lib/taskViews.js'
 import {dispatchWebhook} from '../lib/webhooks.js'
 import {
 	attachmentsForTask,
