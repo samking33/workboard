@@ -1,0 +1,14 @@
+{
+	"name": "fsoc-workboard",
+	"version": "1.0.0",
+	"private": true,
+	"description": "FSOC Workboard — Node.js API plus the prebuilt web client",
+	"engines": {
+		"node": ">=20"
+	},
+	"scripts": {
+		"install-deps": "npm --prefix server install --omit=dev",
+		"build": "npm --prefix server install --omit=dev",
+		"start": "node server/src/index.js"
+	}
+}

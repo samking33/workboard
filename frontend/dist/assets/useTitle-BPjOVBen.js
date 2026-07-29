@@ -1,0 +1,1 @@
+import{Dt as e,P as t,pt as n,y as r}from"./vue.runtime.esm-bundler-DGrc-Ymc.js";import{g as i}from"./dist-C4b4Y3jr.js";t(),n();function a(t=null,n){let a=r(()=>e(t));return i(r(()=>a.value===void 0||a.value===``?`FSOC`:`${a.value} | FSOC`),n)}export{a as t};

@@ -1,0 +1,1 @@
+import{r as e}from"./rolldown-runtime-CNC7AqOf.js";import{t}from"./abstractService-BFJOLCBY.js";var n=e({default:()=>r}),r=class extends t{request(e){return this.post(`/user/deletion/request`,{password:e})}confirm(e){return this.post(`/user/deletion/confirm`,{token:e})}cancel(e){return this.post(`/user/deletion/cancel`,{password:e})}};export{n,r as t};

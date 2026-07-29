@@ -12,7 +12,10 @@ docs/themes/
 *.db-shm
 *.db-wal
 Run
-dist/
+# Scoped rather than a bare `dist/`: the built web client is committed so the
+# deploy target never has to run a frontend build (and so never needs pnpm).
+/dist/
+desktop/dist/
 cover.*
 /vikunja
 Test_*
