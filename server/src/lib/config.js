@@ -42,6 +42,28 @@ export const config = {
 	filesPath: env.VIKUNJA_FILES_BASEPATH ?? './files',
 	maxFileSizeBytes: Number(env.VIKUNJA_FILES_MAXSIZE_BYTES ?? 100 * 1024 * 1024),
 
+	webhookTimeoutMs: Number(env.VIKUNJA_WEBHOOKS_TIMEOUTSECONDS ?? 30) * 1000,
+
+	// Mirrors the Go server's outgoingrequests.allownonroutableips. Off by
+	// default: with it on, a user-supplied webhook URL can reach anything the
+	// server can, including internal services and cloud metadata endpoints. Only
+	// turn it on when the webhook receivers are on the same trusted network.
+	allowNonRoutableWebhookTargets:
+		(env.VIKUNJA_OUTGOINGREQUESTS_ALLOWNONROUTABLEIPS ?? 'false') === 'true',
+
+	// Off by default: an unreachable relay would make every notification attempt
+	// hang, so mail only runs once a host is deliberately configured.
+	mail: {
+		enabled: (env.VIKUNJA_MAILER_ENABLED ?? 'false') === 'true',
+		host: env.VIKUNJA_MAILER_HOST ?? '',
+		port: Number(env.VIKUNJA_MAILER_PORT ?? 587),
+		username: env.VIKUNJA_MAILER_USERNAME ?? '',
+		password: env.VIKUNJA_MAILER_PASSWORD ?? '',
+		fromEmail: env.VIKUNJA_MAILER_FROMEMAIL ?? 'noreply@localhost',
+		forceSSL: (env.VIKUNJA_MAILER_FORCESSL ?? 'false') === 'true',
+		skipTLSVerify: (env.VIKUNJA_MAILER_SKIPTLSVERIFY ?? 'false') === 'true',
+	},
+
 	// Directory holding the built Vue frontend. The Go server embedded it; here
 	// it is served from disk.
 	frontendPath: env.FSOC_FRONTEND_PATH ?? '../frontend/dist',

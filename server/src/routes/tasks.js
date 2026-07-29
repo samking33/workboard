@@ -2,6 +2,7 @@ import express from 'express'
 
 import {requireAuth} from '../lib/auth.js'
 import {one, query} from '../lib/db.js'
+import {buildFilter, buildOrderBy} from '../lib/filter.js'
 import {
 	PERMISSION_READ,
 	PERMISSION_WRITE,
@@ -11,6 +12,7 @@ import {
 	visibleProjectIds,
 } from '../lib/permissions.js'
 import {shapeTask, shapeTasks} from '../lib/shape.js'
+import {dispatchWebhook} from '../lib/webhooks.js'
 import {
 	attachmentsForTask,
 	relationsForTask,
@@ -27,6 +29,40 @@ function pagination(req) {
 	const page = Math.max(1, Number(req.query.page ?? 1))
 	const perPage = Math.min(MAX_PER_PAGE, Math.max(1, Number(req.query.per_page ?? 50)))
 	return {limit: perPage, offset: (page - 1) * perPage}
+}
+
+/**
+ * Turns ?filter=/?s=/?sort_by= into SQL fragments.
+ *
+ * Returns a `bad` message instead of throwing so the caller answers 400 — a
+ * filter we cannot parse must not fall through to an unfiltered list, which
+ * would quietly show tasks the user was trying to filter out.
+ */
+function listQuery(req) {
+	const clauses = []
+	const params = []
+
+	try {
+		const filter = buildFilter(req.query.filter)
+		if (filter) {
+			clauses.push(filter.sql)
+			params.push(...filter.params)
+		}
+	} catch (err) {
+		return {bad: err.message}
+	}
+
+	const search = String(req.query.s ?? '').trim()
+	if (search) {
+		clauses.push('(t.title LIKE ? OR t.description LIKE ?)')
+		params.push(`%${search}%`, `%${search}%`)
+	}
+
+	return {
+		where: clauses.length > 0 ? ` AND ${clauses.join(' AND ')}` : '',
+		params,
+		orderBy: buildOrderBy(req.query.sort_by, req.query.order_by),
+	}
 }
 
 /** Loads a task and the caller's permission on its project in one step. */
@@ -56,12 +92,17 @@ tasksRouter.get(
 	requireProject(PERMISSION_READ),
 	async (req, res, next) => {
 		try {
+			const q = listQuery(req)
+			if (q.bad) {
+				return res.status(400).json({message: q.bad})
+			}
+
 			const {limit, offset} = pagination(req)
 			const rows = await query(
-				`SELECT * FROM tasks
-				 WHERE project_id = ? AND deleted_at IS NULL
-				 ORDER BY \`index\` DESC LIMIT ? OFFSET ?`,
-				[req.projectId, limit, offset],
+				`SELECT t.* FROM tasks t
+				 WHERE t.project_id = ? AND t.deleted_at IS NULL${q.where}
+				 ORDER BY ${q.orderBy ?? 't.`index` DESC'} LIMIT ? OFFSET ?`,
+				[req.projectId, ...q.params, limit, offset],
 			)
 			return res.json(await shapeTasks(rows))
 		} catch (err) {
@@ -79,21 +120,44 @@ tasksRouter.get(
 		try {
 			const viewId = Number(req.params.view)
 			const view = await one(
-				'SELECT id, view_kind FROM project_views WHERE id = ? AND project_id = ?',
+				'SELECT id, view_kind, filter FROM project_views WHERE id = ? AND project_id = ?',
 				[viewId, req.projectId],
 			)
 			if (!view) {
 				return res.status(404).json({message: 'view not found'})
 			}
 
+			const q = listQuery(req)
+			if (q.bad) {
+				return res.status(400).json({message: q.bad})
+			}
+
+			// A view carries its own saved filter; both apply, so a view showing only
+			// open tasks cannot be widened by the query string.
+			let viewWhere = ''
+			const viewParams = []
+			if (view.filter) {
+				try {
+					const vf = buildFilter(view.filter)
+					if (vf) {
+						viewWhere = ` AND ${vf.sql}`
+						viewParams.push(...vf.params)
+					}
+				} catch {
+					// A view saved by the Go server may use syntax we do not parse.
+					// Ignoring it shows more than intended, so fail instead.
+					return res.status(500).json({message: `this view has a filter this server cannot parse: ${view.filter}`})
+				}
+			}
+
 			const {limit, offset} = pagination(req)
 			const rows = await query(
 				`SELECT t.* FROM tasks t
 				 LEFT JOIN task_positions tp ON tp.task_id = t.id AND tp.project_view_id = ?
-				 WHERE t.project_id = ? AND t.deleted_at IS NULL
-				 ORDER BY COALESCE(tp.position, t.\`index\`), t.id
+				 WHERE t.project_id = ? AND t.deleted_at IS NULL${viewWhere}${q.where}
+				 ORDER BY ${q.orderBy ?? 'COALESCE(tp.position, t.`index` * 65536), t.id'}
 				 LIMIT ? OFFSET ?`,
-				[viewId, req.projectId, limit, offset],
+				[viewId, req.projectId, ...viewParams, ...q.params, limit, offset],
 			)
 
 			const ids = rows.map(r => r.id)
@@ -138,22 +202,19 @@ tasksRouter.get(['/tasks', '/tasks/all'], async (req, res, next) => {
 			return res.json([])
 		}
 
-		const ph = ids.map(() => '?').join(',')
-		const params = [...ids]
-		let where = `t.project_id IN (${ph}) AND t.deleted_at IS NULL`
-
-		// The client expresses this as filter=done = false rather than a flag.
-		const filter = String(req.query.filter ?? '')
-		if (req.query.filter_by === 'done' || req.query.done === 'false' || /done\s*=\s*false/.test(filter)) {
-			where += ' AND t.done = 0'
+		const q = listQuery(req)
+		if (q.bad) {
+			return res.status(400).json({message: q.bad})
 		}
 
+		const ph = ids.map(() => '?').join(',')
 		const {limit, offset} = pagination(req)
 		const rows = await query(
-			`SELECT t.* FROM tasks t WHERE ${where}
-			 ORDER BY t.due_date IS NULL, t.due_date, t.id
+			`SELECT t.* FROM tasks t
+			 WHERE t.project_id IN (${ph}) AND t.deleted_at IS NULL${q.where}
+			 ORDER BY ${q.orderBy ?? 't.due_date IS NULL, t.due_date, t.id'}
 			 LIMIT ? OFFSET ?`,
-			[...params, limit, offset],
+			[...ids, ...q.params, limit, offset],
 		)
 		return res.json(await shapeTasks(rows))
 	} catch (err) {
@@ -180,6 +241,76 @@ tasksRouter.get('/tasks/:task(\\d+)', async (req, res, next) => {
 		return next(err)
 	}
 })
+
+/**
+ * Gives a new task a place in every view of its project.
+ *
+ * Both halves matter: without a task_positions row the task sorts by `index`
+ * while its reordered siblings sort by position, and the two scales interleave
+ * wrongly; without a task_buckets row the task never appears on the board at
+ * all. The 2^16 multiplier matches the Go server so positions stay comparable
+ * across rows either server wrote, and leaves room to drop cards between.
+ */
+async function addTaskToViews(taskId, projectId, index) {
+	const views = await query(
+		'SELECT id, view_kind, default_bucket_id FROM project_views WHERE project_id = ?',
+		[projectId],
+	)
+
+	for (const view of views) {
+		await query(
+			`INSERT INTO task_positions (task_id, project_view_id, position) VALUES (?, ?, ?)
+			 ON DUPLICATE KEY UPDATE position = VALUES(position)`,
+			[taskId, view.id, index * 65536],
+		)
+
+		if (view.view_kind !== 3) {
+			continue
+		}
+
+		let bucketId = view.default_bucket_id
+		if (!bucketId) {
+			const first = await one(
+				'SELECT id FROM buckets WHERE project_view_id = ? ORDER BY position, id LIMIT 1',
+				[view.id],
+			)
+			bucketId = first?.id
+		}
+		if (bucketId) {
+			await query(
+				`INSERT INTO task_buckets (bucket_id, task_id, project_view_id) VALUES (?, ?, ?)
+				 ON DUPLICATE KEY UPDATE bucket_id = VALUES(bucket_id)`,
+				[bucketId, taskId, view.id],
+			)
+		}
+	}
+}
+
+/** Moves a task's card to the done bucket, or back to the default one. */
+async function syncDoneBucket(taskId, projectId, done) {
+	const views = await query(
+		'SELECT id, default_bucket_id, done_bucket_id FROM project_views WHERE project_id = ? AND view_kind = 3',
+		[projectId],
+	)
+
+	for (const view of views) {
+		let target = done ? view.done_bucket_id : view.default_bucket_id
+		if (!target) {
+			const fallback = await one(
+				`SELECT id FROM buckets WHERE project_view_id = ? ORDER BY position ${done ? 'DESC' : 'ASC'}, id LIMIT 1`,
+				[view.id],
+			)
+			target = fallback?.id
+		}
+		if (target) {
+			await query(
+				`INSERT INTO task_buckets (bucket_id, task_id, project_view_id) VALUES (?, ?, ?)
+				 ON DUPLICATE KEY UPDATE bucket_id = VALUES(bucket_id)`,
+				[target, taskId, view.id],
+			)
+		}
+	}
+}
 
 tasksRouter.put(
 	'/projects/:project(\\d+)/tasks',
@@ -208,8 +339,12 @@ tasksRouter.put(
 				],
 			)
 
+			await addTaskToViews(result.insertId, req.projectId, Number(maxRow.max_index) + 1)
+
 			const row = await one('SELECT * FROM tasks WHERE id = ?', [result.insertId])
-			return res.status(201).json(shapeTask(row))
+			const created = shapeTask(row)
+			dispatchWebhook(req.projectId, 'task.created', {task: created}, req.user)
+			return res.status(201).json(created)
 		} catch (err) {
 			return next(err)
 		}
@@ -267,11 +402,18 @@ tasksRouter.post('/tasks/:task(\\d+)', async (req, res, next) => {
 			await replaceReminders(taskId, req.body.reminders)
 		}
 
+		// Ticking a task off in the list has to move its card too, or the board
+		// keeps showing it as in progress.
+		if (req.body?.done !== undefined) {
+			await syncDoneBucket(taskId, found.task.project_id, Boolean(req.body.done))
+		}
+
 		const row = await one('SELECT * FROM tasks WHERE id = ?', [taskId])
 		const [shaped] = await shapeTasks([row])
 		shaped.related_tasks = await relationsForTask(taskId)
 		shaped.reminders = await remindersForTask(taskId)
 		shaped.attachments = await attachmentsForTask(taskId)
+		dispatchWebhook(found.task.project_id, 'task.updated', {task: shaped}, req.user)
 		return res.json(shaped)
 	} catch (err) {
 		return next(err)
@@ -289,7 +431,46 @@ tasksRouter.delete('/tasks/:task(\\d+)', async (req, res, next) => {
 		// Soft delete: the Go schema keeps the row and filters on deleted_at, so
 		// hard-deleting here would diverge from data written by the old server.
 		await query('UPDATE tasks SET deleted_at = UTC_TIMESTAMP() WHERE id = ?', [taskId])
+		dispatchWebhook(found.task.project_id, 'task.deleted', {task: shapeTask(found.task)}, req.user)
 		return res.json({message: 'task deleted'})
+	} catch (err) {
+		return next(err)
+	}
+})
+
+// --- drag reordering ---------------------------------------------------
+
+// The client computes the new position as the midpoint between the two cards a
+// dragged task was dropped between, so the server only stores what it is told.
+tasksRouter.post('/tasks/:task(\\d+)/position', async (req, res, next) => {
+	try {
+		const taskId = Number(req.params.task)
+		const found = await loadTaskFor(req.user.id, taskId, PERMISSION_WRITE)
+		if (found.status) {
+			return res.status(found.status).json({message: found.message})
+		}
+
+		const viewId = Number(req.body?.project_view_id)
+		const position = Number(req.body?.position)
+		if (!Number.isInteger(viewId) || !Number.isFinite(position)) {
+			return res.status(400).json({message: 'project_view_id and a numeric position are required'})
+		}
+
+		// The view has to belong to the task's own project, otherwise a position
+		// could be written into a view the caller has no access to.
+		const view = await one('SELECT id FROM project_views WHERE id = ? AND project_id = ?',
+			[viewId, found.task.project_id])
+		if (!view) {
+			return res.status(404).json({message: 'view not found in this task\'s project'})
+		}
+
+		await query(
+			`INSERT INTO task_positions (task_id, project_view_id, position) VALUES (?, ?, ?)
+			 ON DUPLICATE KEY UPDATE position = VALUES(position)`,
+			[taskId, viewId, position],
+		)
+
+		return res.json({task_id: taskId, project_view_id: viewId, position})
 	} catch (err) {
 		return next(err)
 	}
@@ -321,6 +502,8 @@ tasksRouter.put('/tasks/:task(\\d+)/assignees', async (req, res, next) => {
 			 WHERE NOT EXISTS (SELECT 1 FROM task_assignees WHERE task_id = ? AND user_id = ?)`,
 			[taskId, userId, taskId, userId],
 		)
+		dispatchWebhook(found.task.project_id, 'task.assignee.created',
+			{task_id: taskId, user_id: userId}, req.user)
 		return res.status(201).json({user_id: userId, created: new Date()})
 	} catch (err) {
 		return next(err)
@@ -337,6 +520,8 @@ tasksRouter.delete('/tasks/:task(\\d+)/assignees/:user(\\d+)', async (req, res, 
 
 		await query('DELETE FROM task_assignees WHERE task_id = ? AND user_id = ?',
 			[taskId, Number(req.params.user)])
+		dispatchWebhook(found.task.project_id, 'task.assignee.deleted',
+			{task_id: taskId, user_id: Number(req.params.user)}, req.user)
 		return res.json({message: 'assignee removed'})
 	} catch (err) {
 		return next(err)

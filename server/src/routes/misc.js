@@ -3,7 +3,7 @@ import express from 'express'
 import {requireAuth} from '../lib/auth.js'
 import {one, query} from '../lib/db.js'
 import {PERMISSION_READ, PERMISSION_WRITE, requireProject} from '../lib/permissions.js'
-import {shapeLabel} from '../lib/shape.js'
+import {shapeLabel, shapeTasks} from '../lib/shape.js'
 
 export const miscRouter = express.Router()
 miscRouter.use(requireAuth)
@@ -88,18 +88,40 @@ miscRouter.get(
 				'SELECT id, title, project_view_id, `limit`, position, created, updated FROM buckets WHERE project_view_id = ? ORDER BY position, id',
 				[viewId],
 			)
+			if (buckets.length === 0) {
+				return res.json([])
+			}
 
-			// The board renders bucket -> tasks, so send the tasks with them.
+			// One query for the whole board rather than one per column — a project
+			// with a dozen buckets otherwise costs a dozen round trips per load.
+			const rows = await query(
+				`SELECT t.*, tb.bucket_id FROM task_buckets tb
+				 JOIN tasks t ON t.id = tb.task_id
+				 LEFT JOIN task_positions tp ON tp.task_id = t.id AND tp.project_view_id = tb.project_view_id
+				 WHERE tb.project_view_id = ? AND t.deleted_at IS NULL
+				 ORDER BY COALESCE(tp.position, t.\`index\` * 65536), t.id`,
+				[viewId],
+			)
+
+			const byBucket = new Map()
+			const positionByTask = new Map()
+			for (const r of rows) {
+				if (!byBucket.has(r.bucket_id)) {
+					byBucket.set(r.bucket_id, [])
+				}
+				byBucket.get(r.bucket_id).push(r)
+			}
+
+			const positions = await query(
+				'SELECT task_id, position FROM task_positions WHERE project_view_id = ?', [viewId])
+			for (const p of positions) {
+				positionByTask.set(p.task_id, p.position)
+			}
+
 			for (const b of buckets) {
-				const rows = await query(
-					`SELECT t.* FROM task_buckets tb JOIN tasks t ON t.id = tb.task_id
-					 WHERE tb.bucket_id = ? AND t.deleted_at IS NULL
-					 ORDER BY t.\`index\``,
-					[b.id],
-				)
-				const {shapeTasks} = await import('../lib/shape.js')
-				b.tasks = await shapeTasks(rows)
-				b.count = rows.length
+				const bucketRows = byBucket.get(b.id) ?? []
+				b.tasks = await shapeTasks(bucketRows, {positionByTask})
+				b.count = bucketRows.length
 			}
 
 			return res.json(buckets)
@@ -137,6 +159,95 @@ miscRouter.put(
 	},
 )
 
+// Renaming a column or setting its WIP limit.
+miscRouter.post(
+	'/projects/:project(\\d+)/views/:view(\\d+)/buckets/:bucket(\\d+)',
+	requireProject(PERMISSION_WRITE),
+	async (req, res, next) => {
+		try {
+			const bucket = await one(
+				`SELECT b.* FROM buckets b JOIN project_views v ON v.id = b.project_view_id
+				 WHERE b.id = ? AND b.project_view_id = ? AND v.project_id = ?`,
+				[Number(req.params.bucket), Number(req.params.view), req.projectId],
+			)
+			if (!bucket) {
+				return res.status(404).json({message: 'bucket not found'})
+			}
+
+			const sets = []
+			const params = []
+			if (req.body?.title !== undefined) {
+				const title = String(req.body.title).trim()
+				if (!title) {
+					return res.status(400).json({message: 'a title is required'})
+				}
+				sets.push('title = ?')
+				params.push(title)
+			}
+			if (req.body?.limit !== undefined) {
+				const limit = Number(req.body.limit)
+				if (!Number.isInteger(limit) || limit < 0) {
+					return res.status(400).json({message: 'limit must be zero or a positive whole number'})
+				}
+				sets.push('`limit` = ?')
+				params.push(limit)
+			}
+			if (req.body?.position !== undefined && Number.isFinite(Number(req.body.position))) {
+				sets.push('position = ?')
+				params.push(Number(req.body.position))
+			}
+
+			if (sets.length > 0) {
+				sets.push('updated = UTC_TIMESTAMP()')
+				await query(`UPDATE buckets SET ${sets.join(', ')} WHERE id = ?`, [...params, bucket.id])
+			}
+
+			const row = await one('SELECT * FROM buckets WHERE id = ?', [bucket.id])
+			return res.json(row)
+		} catch (err) {
+			return next(err)
+		}
+	},
+)
+
+miscRouter.delete(
+	'/projects/:project(\\d+)/views/:view(\\d+)/buckets/:bucket(\\d+)',
+	requireProject(PERMISSION_WRITE),
+	async (req, res, next) => {
+		try {
+			const viewId = Number(req.params.view)
+			const bucketId = Number(req.params.bucket)
+
+			const bucket = await one(
+				`SELECT b.* FROM buckets b JOIN project_views v ON v.id = b.project_view_id
+				 WHERE b.id = ? AND b.project_view_id = ? AND v.project_id = ?`,
+				[bucketId, viewId, req.projectId],
+			)
+			if (!bucket) {
+				return res.status(404).json({message: 'bucket not found'})
+			}
+
+			const remaining = await query(
+				'SELECT id FROM buckets WHERE project_view_id = ? AND id <> ? ORDER BY position, id LIMIT 1',
+				[viewId, bucketId],
+			)
+			if (remaining.length === 0) {
+				return res.status(400).json({message: 'a board needs at least one bucket'})
+			}
+
+			// Cards move to the leftmost remaining column rather than vanishing with
+			// the bucket — deleting a column should not look like deleting its tasks.
+			await query('UPDATE task_buckets SET bucket_id = ? WHERE bucket_id = ? AND project_view_id = ?',
+				[remaining[0].id, bucketId, viewId])
+			await query('DELETE FROM buckets WHERE id = ?', [bucketId])
+
+			return res.json({message: 'bucket deleted'})
+		} catch (err) {
+			return next(err)
+		}
+	},
+)
+
 // Moving a card between columns.
 miscRouter.post(
 	'/projects/:project(\\d+)/views/:view(\\d+)/buckets/:bucket(\\d+)/tasks',
@@ -158,11 +269,47 @@ miscRouter.post(
 				return res.status(404).json({message: 'task not found in this project'})
 			}
 
-			await query('DELETE FROM task_buckets WHERE task_id = ? AND project_view_id = ?', [taskId, viewId])
-			await query('INSERT INTO task_buckets (bucket_id, task_id, project_view_id) VALUES (?, ?, ?)',
-				[bucketId, taskId, viewId])
+			const bucket = await one(
+				`SELECT b.id, b.\`limit\` FROM buckets b JOIN project_views v ON v.id = b.project_view_id
+				 WHERE b.id = ? AND b.project_view_id = ? AND v.project_id = ?`,
+				[bucketId, viewId, req.projectId],
+			)
+			if (!bucket) {
+				return res.status(404).json({message: 'bucket not found'})
+			}
 
-			return res.json({task_id: taskId, bucket_id: bucketId})
+			// A WIP limit only bites when the card is arriving from elsewhere;
+			// reordering within a full column has to stay possible.
+			if (bucket.limit > 0) {
+				const current = await one(
+					`SELECT COUNT(*) AS n FROM task_buckets tb JOIN tasks t ON t.id = tb.task_id
+					 WHERE tb.bucket_id = ? AND tb.project_view_id = ? AND tb.task_id <> ? AND t.deleted_at IS NULL`,
+					[bucketId, viewId, taskId],
+				)
+				if (Number(current.n) >= bucket.limit) {
+					return res.status(412).json({message: 'this bucket is already at its limit'})
+				}
+			}
+
+			await query(
+				`INSERT INTO task_buckets (bucket_id, task_id, project_view_id) VALUES (?, ?, ?)
+				 ON DUPLICATE KEY UPDATE bucket_id = VALUES(bucket_id)`,
+				[bucketId, taskId, viewId],
+			)
+
+			// Dragging a card into the done column is how most people complete a task
+			// on a board, so it has to set done — and dragging it back out clears it.
+			const view = await one('SELECT done_bucket_id FROM project_views WHERE id = ?', [viewId])
+			if (view?.done_bucket_id) {
+				const nowDone = view.done_bucket_id === bucketId
+				await query(
+					`UPDATE tasks SET done = ?, done_at = ${nowDone ? 'UTC_TIMESTAMP()' : 'NULL'},
+					 updated = UTC_TIMESTAMP() WHERE id = ? AND done <> ?`,
+					[nowDone ? 1 : 0, taskId, nowDone ? 1 : 0],
+				)
+			}
+
+			return res.json({task_id: taskId, bucket_id: bucketId, project_view_id: viewId})
 		} catch (err) {
 			return next(err)
 		}

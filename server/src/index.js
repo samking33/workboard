@@ -15,6 +15,7 @@ import {sharingRouter} from './routes/sharing.js'
 import {storageRouter} from './routes/storage.js'
 import {taskDetailRouter} from './routes/taskDetail.js'
 import {tasksRouter} from './routes/tasks.js'
+import {webhooksRouter} from './routes/webhooks.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -56,6 +57,7 @@ api.use(storageRouter)
 api.use(sharingRouter)
 api.use(miscRouter)
 api.use(extrasRouter)
+api.use(webhooksRouter)
 
 app.use('/api/v1', api)
 

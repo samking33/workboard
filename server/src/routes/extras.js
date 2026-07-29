@@ -106,8 +106,10 @@ extrasRouter.delete('/subscriptions/:entity/:id', async (req, res, next) => {
 
 // --- reactions ---------------------------------------------------------
 
-const REACTION_TASK = 1
-const REACTION_COMMENT = 2
+// Must match ReactionKind in the Go models — task is 0 there, not 1, so an
+// off-by-one here would file a task's reactions against the comment of that id.
+const REACTION_TASK = 0
+const REACTION_COMMENT = 1
 
 function reactionKind(entity) {
 	return entity === 'comments' ? REACTION_COMMENT : REACTION_TASK
