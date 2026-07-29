@@ -6,6 +6,7 @@ import {requireAuth} from '../lib/auth.js'
 import {config} from '../lib/config.js'
 import {one, query} from '../lib/db.js'
 import {detectDelimiter, parseCsv, parseDate, suggestMapping} from '../lib/csv.js'
+import addTaskToViews from '../lib/taskViews.js'
 
 import {createDefaultViews} from './projects.js'
 
@@ -126,30 +127,7 @@ async function createTask(userId, projectId, task, index, labelCache) {
 		}
 	}
 
-	// Seed the board and ordering the same way a normally created task gets them.
-	const views = await query(
-		'SELECT id, view_kind, default_bucket_id, done_bucket_id FROM project_views WHERE project_id = ?',
-		[projectId],
-	)
-	for (const view of views) {
-		await query(
-			'INSERT INTO task_positions (task_id, project_view_id, position) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE position = VALUES(position)',
-			[taskId, view.id, index * 65536],
-		)
-
-		if (view.view_kind !== 3) {
-			continue
-		}
-		// An already-completed import belongs in the done column, otherwise the
-		// board shows finished work as not started.
-		const bucketId = task.done ? (view.done_bucket_id || view.default_bucket_id) : view.default_bucket_id
-		if (bucketId) {
-			await query(
-				'INSERT INTO task_buckets (bucket_id, task_id, project_view_id) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE bucket_id = VALUES(bucket_id)',
-				[bucketId, taskId, view.id],
-			)
-		}
-	}
+	await addTaskToViews(taskId, projectId, index, task.done)
 
 	return taskId
 }

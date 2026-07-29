@@ -14,6 +14,7 @@ import {
 import {shapeTask, shapeTasks} from '../lib/shape.js'
 import {notify, taskUrl} from '../lib/notify.js'
 import {rollRepeatingTask} from '../lib/repeat.js'
+import addTaskToViews from '../lib/taskViews.js'
 import {dispatchWebhook} from '../lib/webhooks.js'
 import {
 	attachmentsForTask,
@@ -243,76 +244,6 @@ tasksRouter.get('/tasks/:task(\\d+)', async (req, res, next) => {
 		return next(err)
 	}
 })
-
-/**
- * Gives a new task a place in every view of its project.
- *
- * Both halves matter: without a task_positions row the task sorts by `index`
- * while its reordered siblings sort by position, and the two scales interleave
- * wrongly; without a task_buckets row the task never appears on the board at
- * all. The 2^16 multiplier matches the Go server so positions stay comparable
- * across rows either server wrote, and leaves room to drop cards between.
- */
-async function addTaskToViews(taskId, projectId, index) {
-	const views = await query(
-		'SELECT id, view_kind, default_bucket_id FROM project_views WHERE project_id = ?',
-		[projectId],
-	)
-
-	for (const view of views) {
-		await query(
-			`INSERT INTO task_positions (task_id, project_view_id, position) VALUES (?, ?, ?)
-			 ON DUPLICATE KEY UPDATE position = VALUES(position)`,
-			[taskId, view.id, index * 65536],
-		)
-
-		if (view.view_kind !== 3) {
-			continue
-		}
-
-		let bucketId = view.default_bucket_id
-		if (!bucketId) {
-			const first = await one(
-				'SELECT id FROM buckets WHERE project_view_id = ? ORDER BY position, id LIMIT 1',
-				[view.id],
-			)
-			bucketId = first?.id
-		}
-		if (bucketId) {
-			await query(
-				`INSERT INTO task_buckets (bucket_id, task_id, project_view_id) VALUES (?, ?, ?)
-				 ON DUPLICATE KEY UPDATE bucket_id = VALUES(bucket_id)`,
-				[bucketId, taskId, view.id],
-			)
-		}
-	}
-}
-
-/** Moves a task's card to the done bucket, or back to the default one. */
-async function syncDoneBucket(taskId, projectId, done) {
-	const views = await query(
-		'SELECT id, default_bucket_id, done_bucket_id FROM project_views WHERE project_id = ? AND view_kind = 3',
-		[projectId],
-	)
-
-	for (const view of views) {
-		let target = done ? view.done_bucket_id : view.default_bucket_id
-		if (!target) {
-			const fallback = await one(
-				`SELECT id FROM buckets WHERE project_view_id = ? ORDER BY position ${done ? 'DESC' : 'ASC'}, id LIMIT 1`,
-				[view.id],
-			)
-			target = fallback?.id
-		}
-		if (target) {
-			await query(
-				`INSERT INTO task_buckets (bucket_id, task_id, project_view_id) VALUES (?, ?, ?)
-				 ON DUPLICATE KEY UPDATE bucket_id = VALUES(bucket_id)`,
-				[target, taskId, view.id],
-			)
-		}
-	}
-}
 
 tasksRouter.put(
 	'/projects/:project(\\d+)/tasks',

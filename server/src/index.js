@@ -10,6 +10,7 @@ import {startCron} from './lib/cron.js'
 import {ping} from './lib/db.js'
 import {accountRouter} from './routes/account.js'
 import {authRouter} from './routes/auth.js'
+import {caldavRouter, caldavTokenRouter} from './routes/caldav.js'
 import {extrasRouter} from './routes/extras.js'
 import {FILE_MIGRATORS, migrationRouter} from './routes/migration.js'
 import {miscRouter} from './routes/misc.js'
@@ -68,6 +69,7 @@ api.use(extrasRouter)
 api.use(webhooksRouter)
 api.use(accountRouter)
 api.use(migrationRouter)
+api.use(caldavTokenRouter)
 
 app.use('/api/v1', api)
 
@@ -76,6 +78,12 @@ app.use('/api/v1', api)
 const apiV2 = express.Router()
 apiV2.use(storageRouter)
 app.use('/api/v2', apiV2)
+
+// CalDAV lives outside /api: it does its own Basic auth and speaks XML, and the
+// JSON body parser above would reject its payloads.
+app.use('/dav', caldavRouter)
+// Clients probe this path before anything else to find the real endpoint.
+app.all('/.well-known/caldav', (_req, res) => res.redirect(301, '/dav/'))
 
 // --- frontend ----------------------------------------------------------
 const frontendDir = path.resolve(here, '..', config.frontendPath)
