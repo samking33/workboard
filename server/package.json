@@ -4,13 +4,16 @@
   "private": true,
   "type": "module",
   "description": "Node.js API server for FSOC. Speaks the same HTTP contract and uses the same database schema as the Go server it replaces.",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.21.2",

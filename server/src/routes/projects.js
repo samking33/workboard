@@ -14,8 +14,52 @@ export const projectsRouter = express.Router()
 
 projectsRouter.use(requireAuth)
 
-function shapeProject(row, maxPermission) {
+const VIEW_KINDS = ['list', 'gantt', 'table', 'kanban', 'storage']
+
+function shapeView(row) {
 	return {
+		id: row.id,
+		title: row.title,
+		project_id: row.project_id,
+		view_kind: VIEW_KINDS[row.view_kind] ?? 'list',
+		filter: row.filter,
+		position: row.position,
+		bucket_configuration_mode: row.bucket_configuration_mode,
+		bucket_configuration: [],
+		default_bucket_id: row.default_bucket_id ?? 0,
+		done_bucket_id: row.done_bucket_id ?? 0,
+		created: row.created,
+		updated: row.updated,
+	}
+}
+
+/**
+ * Loads views for many projects at once, keyed by project id. The client renders
+ * a project's tab bar straight from project.views, so a project without them
+ * shows no tabs at all.
+ */
+async function viewsByProject(projectIds) {
+	const byProject = new Map()
+	if (projectIds.length === 0) {
+		return byProject
+	}
+	const ph = projectIds.map(() => '?').join(',')
+	const rows = await query(
+		`SELECT * FROM project_views WHERE project_id IN (${ph}) ORDER BY position, id`,
+		projectIds,
+	)
+	for (const r of rows) {
+		if (!byProject.has(r.project_id)) {
+			byProject.set(r.project_id, [])
+		}
+		byProject.get(r.project_id).push(shapeView(r))
+	}
+	return byProject
+}
+
+function shapeProject(row, maxPermission, views = []) {
+	return {
+		views,
 		id: row.id,
 		title: row.title,
 		description: row.description ?? '',
@@ -46,7 +90,8 @@ projectsRouter.get('/projects', async (req, res, next) => {
 			ids,
 		)
 
-		return res.json(rows.map(r => shapeProject(r)))
+		const views = await viewsByProject(rows.map(r => r.id))
+		return res.json(rows.map(r => shapeProject(r, undefined, views.get(r.id) ?? [])))
 	} catch (err) {
 		return next(err)
 	}
@@ -61,7 +106,8 @@ projectsRouter.get(
 			if (!row) {
 				return res.status(404).json({message: 'project not found'})
 			}
-			return res.json(shapeProject(row, req.projectPermission))
+			const views = await viewsByProject([row.id])
+			return res.json(shapeProject(row, req.projectPermission, views.get(row.id) ?? []))
 		} catch (err) {
 			return next(err)
 		}
@@ -81,9 +127,7 @@ projectsRouter.get(
 				[req.projectId],
 			)
 
-			// view_kind is stored as an int; the client works in strings.
-			const kinds = ['list', 'gantt', 'table', 'kanban', 'storage']
-			return res.json(rows.map(r => ({...r, view_kind: kinds[r.view_kind] ?? 'list'})))
+			return res.json(rows.map(shapeView))
 		} catch (err) {
 			return next(err)
 		}

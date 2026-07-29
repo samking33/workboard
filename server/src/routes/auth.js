@@ -2,11 +2,14 @@ import express from 'express'
 
 import {config} from '../lib/config.js'
 import {
+	clearRefreshCookie,
 	findUserByLogin,
 	findUserById,
 	hashPassword,
 	publicUser,
+	readRefreshToken,
 	requireAuth,
+	setRefreshCookie,
 	signUserToken,
 	verifyPassword,
 } from '../lib/auth.js'
@@ -41,6 +44,7 @@ authRouter.post('/login', async (req, res, next) => {
 			return res.status(412).json({message: 'this account is disabled'})
 		}
 
+		setRefreshCookie(res, user, {secure: config.publicUrl.startsWith('https://')})
 		return res.json({token: signUserToken(user, {long: Boolean(longToken)})})
 	} catch (err) {
 		return next(err)
@@ -92,15 +96,33 @@ authRouter.get('/user', requireAuth, async (req, res, next) => {
 	}
 })
 
-// The client calls this to extend a session before the token expires.
-authRouter.post('/user/token', requireAuth, async (req, res, next) => {
+/**
+ * Extends a session. The client calls this with its *unauthenticated* HTTP
+ * instance, so it carries no bearer token — the HttpOnly refresh cookie set at
+ * login is what authenticates it.
+ */
+authRouter.post(['/user/token', '/user/token/refresh'], async (req, res, next) => {
 	try {
-		const user = await findUserById(req.user.id)
+		const claims = readRefreshToken(req)
+		if (!claims) {
+			return res.status(401).json({message: 'no valid refresh token'})
+		}
+
+		const user = await findUserById(claims.id)
 		if (!user || user.status !== STATUS_ACTIVE) {
+			clearRefreshCookie(res)
 			return res.status(401).json({message: 'invalid session'})
 		}
+
+		// Rotate on every use so a leaked cookie has a short useful life.
+		setRefreshCookie(res, user, {secure: config.publicUrl.startsWith('https://')})
 		return res.json({token: signUserToken(user)})
 	} catch (err) {
 		return next(err)
 	}
+})
+
+authRouter.post('/logout', (_req, res) => {
+	clearRefreshCookie(res)
+	return res.json({message: 'logged out'})
 })

@@ -33,6 +33,46 @@ export function signUserToken(user, {long = false} = {}) {
 }
 
 /**
+ * Refresh tokens live in an HttpOnly cookie, not in JS-readable storage, so a
+ * script on the page cannot exfiltrate one. They only ever mint access tokens.
+ */
+export const REFRESH_COOKIE = 'fsoc_refresh'
+const REFRESH_TTL_SECONDS = 60 * 60 * 24 * 30
+
+export function signRefreshToken(user) {
+	return jwt.sign({typ: 'refresh', id: user.id}, config.secret, {expiresIn: REFRESH_TTL_SECONDS})
+}
+
+export function setRefreshCookie(res, user, {secure}) {
+	res.cookie(REFRESH_COOKIE, signRefreshToken(user), {
+		httpOnly: true,
+		sameSite: 'lax',
+		secure,
+		maxAge: REFRESH_TTL_SECONDS * 1000,
+		path: '/api',
+	})
+}
+
+export function clearRefreshCookie(res) {
+	res.clearCookie(REFRESH_COOKIE, {path: '/api'})
+}
+
+export function readRefreshToken(req) {
+	const raw = req.cookies?.[REFRESH_COOKIE]
+	if (!raw) {
+		return null
+	}
+	try {
+		const claims = jwt.verify(raw, config.secret)
+		// An access token must never be accepted here, or a stolen one would
+		// grant indefinite renewal.
+		return claims.typ === 'refresh' ? claims : null
+	} catch {
+		return null
+	}
+}
+
+/**
  * Existing passwords are bcrypt ($2a$) written by the Go server. bcryptjs reads
  * that format, so every account keeps working without a reset.
  */

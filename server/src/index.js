@@ -1,18 +1,24 @@
 import path from 'node:path'
 import {fileURLToPath} from 'node:url'
 
+import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import express from 'express'
 
 import {config} from './lib/config.js'
 import {ping} from './lib/db.js'
 import {authRouter} from './routes/auth.js'
+import {miscRouter} from './routes/misc.js'
 import {projectsRouter} from './routes/projects.js'
+import {sharingRouter} from './routes/sharing.js'
+import {storageRouter} from './routes/storage.js'
+import {tasksRouter} from './routes/tasks.js'
 
 const here = path.dirname(fileURLToPath(import.meta.url))
 const app = express()
 
 app.disable('x-powered-by')
+app.use(cookieParser())
 app.use(express.json({limit: '1mb'}))
 app.use(cors({origin: true, credentials: true}))
 
@@ -40,10 +46,20 @@ api.get('/info', (_req, res) => {
 
 // authRouter guards its own routes individually, so it is safe anywhere.
 api.use(authRouter)
-// projectsRouter applies requireAuth for the whole router — keep it last.
+// These apply requireAuth for the whole router — keep them after public routes.
 api.use(projectsRouter)
+api.use(tasksRouter)
+api.use(storageRouter)
+api.use(sharingRouter)
+api.use(miscRouter)
 
 app.use('/api/v1', api)
+
+// The storage client was written against /api/v2 (that is where the Go fork put
+// it), so the same routes are mounted there too rather than changing the client.
+const apiV2 = express.Router()
+apiV2.use(storageRouter)
+app.use('/api/v2', apiV2)
 
 // --- frontend ----------------------------------------------------------
 const frontendDir = path.resolve(here, '..', config.frontendPath)
