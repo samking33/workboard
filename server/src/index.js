@@ -8,6 +8,7 @@ import express from 'express'
 import {config} from './lib/config.js'
 import {startCron} from './lib/cron.js'
 import {ping} from './lib/db.js'
+import {attachRealtime} from './lib/realtime.js'
 import {accountRouter} from './routes/account.js'
 import {authRouter} from './routes/auth.js'
 import {caldavRouter, caldavTokenRouter} from './routes/caldav.js'
@@ -113,6 +114,7 @@ const server = app.listen(config.port, async () => {
 	} catch (err) {
 		console.error('[fsoc] cannot reach the database:', err.message)
 	}
+	attachRealtime(server)
 	startCron()
 	console.log(`[fsoc] listening on http://localhost:${config.port}`)
 	console.log(`[fsoc] serving frontend from ${frontendDir}`)

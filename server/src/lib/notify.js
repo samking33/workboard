@@ -1,6 +1,7 @@
 import {config} from './config.js'
 import {one, query} from './db.js'
 import {sendMail} from './mail.js'
+import {pushToUser} from './realtime.js'
 
 /**
  * Writes an in-app notification and, when mail is configured, emails it.
@@ -13,10 +14,18 @@ export async function notify(userId, name, payload, mail = null) {
 		return
 	}
 
-	await query(
+	const result = await query(
 		'INSERT INTO notifications (notifiable_id, notification, name, subject_id, created) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())',
 		[userId, JSON.stringify(payload), name, payload?.task?.id ?? payload?.project?.id ?? 0],
 	)
+
+	// The bell updates without waiting for the next poll.
+	pushToUser(userId, 'notification.created', {
+		id: result.insertId,
+		name,
+		notification: payload,
+		created: new Date(),
+	})
 
 	if (!mail) {
 		return

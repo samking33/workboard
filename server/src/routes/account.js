@@ -103,6 +103,31 @@ function exportPath(userId) {
 	return path.join(config.filesPath, `export-user-${userId}.json.gz`)
 }
 
+// The settings page asks for this before offering the download button.
+accountRouter.get('/user/export', async (req, res, next) => {
+	try {
+		const file = exportPath(req.user.id)
+		if (!fs.existsSync(file)) {
+			return res.json({id: 0, created: null, size: 0})
+		}
+		const stat = await fsp.stat(file)
+		return res.json({id: req.user.id, created: stat.mtime, size: stat.size})
+	} catch (err) {
+		return next(err)
+	}
+})
+
+/**
+ * Zone names come from the platform rather than a bundled list, so they stay
+ * current with the system's tz database.
+ */
+accountRouter.get('/user/timezones', (_req, res) => {
+	const zones = typeof Intl.supportedValuesOf === 'function'
+		? Intl.supportedValuesOf('timeZone')
+		: ['UTC']
+	return res.json(zones)
+})
+
 accountRouter.post('/user/export/request', async (req, res, next) => {
 	try {
 		if (!(await passwordMatches(req.user.id, req.body?.password))) {
