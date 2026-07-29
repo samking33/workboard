@@ -11,6 +11,7 @@ import {ping} from './lib/db.js'
 import {accountRouter} from './routes/account.js'
 import {authRouter} from './routes/auth.js'
 import {extrasRouter} from './routes/extras.js'
+import {FILE_MIGRATORS, migrationRouter} from './routes/migration.js'
 import {miscRouter} from './routes/misc.js'
 import {projectsRouter} from './routes/projects.js'
 import {sharingRouter} from './routes/sharing.js'
@@ -39,8 +40,13 @@ api.get('/info', (_req, res) => {
 		version: 'fsoc-node-dev',
 		frontend_url: config.publicUrl,
 		motd: '',
-		link_sharing_enabled: false,
+		link_sharing_enabled: true,
 		max_file_size: String(config.maxFileSizeBytes),
+		// The client builds its import screen from this list, so a migrator absent
+		// here is simply not offered.
+		available_migrators: FILE_MIGRATORS,
+		task_comments_enabled: true,
+		enabled_background_providers: [],
 		auth: {
 			local: {enabled: true, registration_enabled: config.registrationEnabled},
 			ldap: {enabled: false},
@@ -61,6 +67,7 @@ api.use(miscRouter)
 api.use(extrasRouter)
 api.use(webhooksRouter)
 api.use(accountRouter)
+api.use(migrationRouter)
 
 app.use('/api/v1', api)
 
