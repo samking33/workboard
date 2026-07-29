@@ -38,6 +38,11 @@ Produces a single static binary in `deploy/dist/` with the frontend embedded —
 no Node or Go runtime needed on the server. Build for `linux/amd64` when
 deploying to a Linux host, even from a Mac.
 
+Build the frontend first. `frontend/dist/` is generated, so it is not in the
+repo, and a bare `go build` on a fresh clone fails with
+`pattern all:dist: no matching files found` — the Go binary embeds that
+directory. `build-release.sh` does both steps in the right order.
+
 ## Deploy
 
 See **[deploy/README.md](deploy/README.md)** for the full walkthrough: MySQL
