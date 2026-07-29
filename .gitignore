@@ -72,3 +72,8 @@ plans/
 /config.yml
 /config.yaml
 /vikunja.env
+
+# Never commit a real environment file — this repo is public.
+.env
+.env.*
+!.env.example
