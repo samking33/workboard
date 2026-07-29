@@ -1,4 +1,4 @@
-import {one} from './db.js'
+import {one, query} from './db.js'
 
 export const PERMISSION_READ = 0
 export const PERMISSION_WRITE = 1
@@ -76,6 +76,39 @@ export function requireProject(level, param = 'project') {
 			return next(err)
 		}
 	}
+}
+
+/**
+ * Highest permission on many projects at once, keyed by project id.
+ *
+ * One query rather than one per project: the sidebar lists every project a user
+ * can reach, and the per-project version would be a round trip each.
+ */
+export async function permissionsForProjects(userId, projectIds) {
+	const result = new Map()
+	if (!userId || projectIds.length === 0) {
+		return result
+	}
+
+	const ph = projectIds.map(() => '?').join(',')
+	const rows = await query(
+		`SELECT project_id, MAX(perm) AS perm FROM (
+			SELECT id AS project_id, ? AS perm FROM projects WHERE id IN (${ph}) AND owner_id = ?
+			UNION ALL
+			SELECT project_id, permission AS perm FROM users_projects
+				WHERE project_id IN (${ph}) AND user_id = ?
+			UNION ALL
+			SELECT tp.project_id, tp.permission AS perm FROM team_projects tp
+				JOIN team_members tm ON tm.team_id = tp.team_id
+				WHERE tp.project_id IN (${ph}) AND tm.user_id = ?
+		) AS grants GROUP BY project_id`,
+		[PERMISSION_ADMIN, ...projectIds, userId, ...projectIds, userId, ...projectIds, userId],
+	)
+
+	for (const r of rows) {
+		result.set(r.project_id, Number(r.perm))
+	}
+	return result
 }
 
 /**

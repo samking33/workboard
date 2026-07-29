@@ -2,6 +2,7 @@ import express from 'express'
 
 import {requireAuth} from '../lib/auth.js'
 import {one, query} from '../lib/db.js'
+import {bucketsWithTasks} from '../lib/board.js'
 import {buildFilter, buildOrderBy} from '../lib/filter.js'
 import {
 	PERMISSION_READ,
@@ -101,12 +102,17 @@ tasksRouter.get(
 			}
 
 			const {limit, offset} = pagination(req)
+			const total = await one(
+				`SELECT COUNT(*) AS n FROM tasks t WHERE t.project_id = ? AND t.deleted_at IS NULL${q.where}`,
+				[req.projectId, ...q.params],
+			)
 			const rows = await query(
 				`SELECT t.* FROM tasks t
 				 WHERE t.project_id = ? AND t.deleted_at IS NULL${q.where}
 				 ORDER BY ${q.orderBy ?? 't.`index` DESC'} LIMIT ? OFFSET ?`,
 				[req.projectId, ...q.params, limit, offset],
 			)
+			res.paginate?.(Number(total.n), limit)
 			return res.json(await shapeTasks(rows))
 		} catch (err) {
 			return next(err)
@@ -133,6 +139,14 @@ tasksRouter.get(
 			const q = listQuery(req)
 			if (q.bad) {
 				return res.status(400).json({message: q.bad})
+			}
+
+			// A kanban view answers with its buckets, each carrying its cards — the
+			// client's model factory switches on project_view_id being present and
+			// builds a board from it. Returning a flat task list here renders three
+			// empty columns.
+			if (view.view_kind === 3) {
+				return res.json(await bucketsWithTasks(viewId, q))
 			}
 
 			// A view carries its own saved filter; both apply, so a view showing only

@@ -12,6 +12,7 @@ import {
 	PERMISSION_READ,
 	PERMISSION_WRITE,
 	requireProject,
+	permissionsForProjects,
 	visibleProjectIdsFor,
 } from '../lib/permissions.js'
 
@@ -93,16 +94,26 @@ projectsRouter.get('/projects', async (req, res, next) => {
 			return res.json([])
 		}
 
+		// ?is_archived=true means "include archived ones", not "only archived" —
+		// the client sends it when building its full project list, and filters for
+		// the archived view itself. Hard-coding them out hides them everywhere.
+		const includeArchived = String(req.query.is_archived ?? '') === 'true'
+
 		// Built from ids resolved server-side, never from user input.
 		const placeholders = ids.map(() => '?').join(',')
 		const rows = await query(
-			`SELECT * FROM projects WHERE id IN (${placeholders}) AND is_archived = 0
+			`SELECT * FROM projects WHERE id IN (${placeholders})${includeArchived ? '' : ' AND is_archived = 0'}
 			 ORDER BY position, id`,
 			ids,
 		)
 
 		const views = await viewsByProject(rows.map(r => r.id))
-		return res.json(rows.map(r => shapeProject(r, undefined, views.get(r.id) ?? [])))
+		// The client gates its write controls — add-task, file upload, drag — on
+		// max_permission from this list, so omitting it makes a project read-only
+		// in the UI even for its owner.
+		const permissions = await permissionsForProjects(req.user.id, ids)
+		res.paginate?.(rows.length, Math.max(rows.length, 1))
+		return res.json(rows.map(r => shapeProject(r, permissions.get(r.id), views.get(r.id) ?? [])))
 	} catch (err) {
 		return next(err)
 	}

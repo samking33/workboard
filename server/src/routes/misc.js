@@ -3,8 +3,9 @@ import express from 'express'
 import {requireAuth} from '../lib/auth.js'
 import {one, query} from '../lib/db.js'
 import {PERMISSION_READ, PERMISSION_WRITE, requireProject} from '../lib/permissions.js'
+import {bucketsWithTasks} from '../lib/board.js'
 import {rollRepeatingTask} from '../lib/repeat.js'
-import {shapeLabel, shapeTasks} from '../lib/shape.js'
+import {shapeLabel} from '../lib/shape.js'
 
 export const miscRouter = express.Router()
 miscRouter.use(requireAuth)
@@ -85,47 +86,7 @@ miscRouter.get(
 				return res.status(404).json({message: 'view not found'})
 			}
 
-			const buckets = await query(
-				'SELECT id, title, project_view_id, `limit`, position, created, updated FROM buckets WHERE project_view_id = ? ORDER BY position, id',
-				[viewId],
-			)
-			if (buckets.length === 0) {
-				return res.json([])
-			}
-
-			// One query for the whole board rather than one per column — a project
-			// with a dozen buckets otherwise costs a dozen round trips per load.
-			const rows = await query(
-				`SELECT t.*, tb.bucket_id FROM task_buckets tb
-				 JOIN tasks t ON t.id = tb.task_id
-				 LEFT JOIN task_positions tp ON tp.task_id = t.id AND tp.project_view_id = tb.project_view_id
-				 WHERE tb.project_view_id = ? AND t.deleted_at IS NULL
-				 ORDER BY COALESCE(tp.position, t.\`index\` * 65536), t.id`,
-				[viewId],
-			)
-
-			const byBucket = new Map()
-			const positionByTask = new Map()
-			for (const r of rows) {
-				if (!byBucket.has(r.bucket_id)) {
-					byBucket.set(r.bucket_id, [])
-				}
-				byBucket.get(r.bucket_id).push(r)
-			}
-
-			const positions = await query(
-				'SELECT task_id, position FROM task_positions WHERE project_view_id = ?', [viewId])
-			for (const p of positions) {
-				positionByTask.set(p.task_id, p.position)
-			}
-
-			for (const b of buckets) {
-				const bucketRows = byBucket.get(b.id) ?? []
-				b.tasks = await shapeTasks(bucketRows, {positionByTask})
-				b.count = bucketRows.length
-			}
-
-			return res.json(buckets)
+			return res.json(await bucketsWithTasks(viewId))
 		} catch (err) {
 			return next(err)
 		}

@@ -34,6 +34,21 @@ app.use(cors({origin: true, credentials: true}))
 // --- API ---------------------------------------------------------------
 const api = express.Router()
 
+/**
+ * The client pages through list endpoints with `while (page <= totalPages)`,
+ * reading these headers. Without them totalPages stays 0 and only the first
+ * page is ever fetched, so anyone past the first 50 projects or tasks silently
+ * loses the rest.
+ */
+api.use((req, res, next) => {
+	res.paginate = (total, perPage) => {
+		res.setHeader('x-pagination-result-count', String(total))
+		res.setHeader('x-pagination-limit', String(perPage))
+		res.setHeader('x-pagination-total-pages', String(Math.max(1, Math.ceil(total / perPage))))
+	}
+	next()
+})
+
 // Public endpoints are registered before any router that applies auth
 // middleware at the router level: `router.use(requireAuth)` runs for every
 // request that reaches that router, not only ones matching its routes, so a
