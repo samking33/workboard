@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import express from 'express'
 import speakeasy from 'speakeasy'
 
-import {hashPassword, requireAuth, verifyPassword} from '../lib/auth.js'
+import {hashPassword, requireAuth, requireRealUser, verifyPassword} from '../lib/auth.js'
 import {one, query} from '../lib/db.js'
 import {
 	PERMISSION_ADMIN,
@@ -15,6 +15,7 @@ import {
 
 export const extrasRouter = express.Router()
 extrasRouter.use(requireAuth)
+extrasRouter.use(requireRealUser)
 
 // favorites.kind values from the Go schema.
 const FAVORITE_TASK = 1

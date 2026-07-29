@@ -1,12 +1,13 @@
 import express from 'express'
 
-import {requireAuth} from '../lib/auth.js'
+import {requireAuth, requireRealUser} from '../lib/auth.js'
 import {one, query} from '../lib/db.js'
 import {PERMISSION_ADMIN, PERMISSION_READ, requireProject} from '../lib/permissions.js'
 import {shapeUser} from '../lib/shape.js'
 
 export const sharingRouter = express.Router()
 sharingRouter.use(requireAuth)
+sharingRouter.use(requireRealUser)
 
 // --- who can reach a project ------------------------------------------
 

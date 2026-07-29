@@ -9,7 +9,7 @@ import {
 	canReadProject,
 	canWriteProject,
 	requireProject,
-	visibleProjectIds,
+	visibleProjectIdsFor,
 } from '../lib/permissions.js'
 import {shapeTask, shapeTasks} from '../lib/shape.js'
 import {notify, taskUrl} from '../lib/notify.js'
@@ -200,7 +200,7 @@ tasksRouter.get(
 // Backs "Upcoming" and "My Tasks". Scoped to projects the caller can reach.
 tasksRouter.get(['/tasks', '/tasks/all'], async (req, res, next) => {
 	try {
-		const ids = await visibleProjectIds(req.user.id)
+		const ids = await visibleProjectIdsFor(req)
 		if (ids.length === 0) {
 			return res.json([])
 		}

@@ -33,6 +33,28 @@ export function signUserToken(user, {long = false} = {}) {
 }
 
 /**
+ * A link share is not a user. Its token carries the one project it opens and
+ * the permission it was created with, so possession of the link can never
+ * reach anything else — the permission layer reads these claims rather than
+ * looking the holder up in users_projects.
+ */
+export function signLinkShareToken(share) {
+	return jwt.sign(
+		{
+			type: AUTH_TYPE_LINK_SHARE,
+			id: share.id,
+			hash: share.hash,
+			project_id: share.project_id,
+			permission: share.permission,
+			username: `link-share-${share.id}`,
+			jti: crypto.randomUUID(),
+		},
+		config.secret,
+		{expiresIn: config.tokenTtlSeconds},
+	)
+}
+
+/**
  * Refresh tokens live in an HttpOnly cookie, not in JS-readable storage, so a
  * script on the page cannot exfiltrate one. They only ever mint access tokens.
  */
@@ -119,10 +141,43 @@ export function requireAuth(req, res, next) {
 			isAdmin: Boolean(claims.is_admin),
 			type: claims.type,
 		}
+
+		// A link share is scoped to one project at one permission.
+		//
+		// Its id is a link_shares row id, which shares a number space with user
+		// ids — share 1 and user 1 are different things. So req.user.id is blanked
+		// here: any helper that takes a user id (canReadProject and friends) then
+		// resolves to no access rather than silently answering as whichever user
+		// happens to hold that id. Routes that mean to serve a share read
+		// req.linkShare explicitly, so support is opt-in per route.
+		if (claims.type === AUTH_TYPE_LINK_SHARE) {
+			req.linkShare = {
+				id: claims.id,
+				projectId: claims.project_id,
+				permission: claims.permission,
+			}
+			req.user.id = null
+			req.user.isAdmin = false
+		}
+
 		return next()
 	} catch {
 		return res.status(401).json({message: 'invalid or expired token'})
 	}
+}
+
+/**
+ * Refuses link-share tokens.
+ *
+ * A share is not an account: it has no settings, no email, and nothing it could
+ * own. Without this those routes fail somewhere deeper — creating a project as a
+ * share hit a null owner_id and produced a 500 rather than a refusal.
+ */
+export function requireRealUser(req, res, next) {
+	if (req.linkShare) {
+		return res.status(403).json({message: 'a share link cannot do this'})
+	}
+	return next()
 }
 
 /** Shape the frontend's UserModel expects from /user and login responses. */

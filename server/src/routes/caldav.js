@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import express from 'express'
 
-import {requireAuth} from '../lib/auth.js'
+import {requireAuth, requireRealUser} from '../lib/auth.js'
 import {one, query} from '../lib/db.js'
 import {buildCalendar, parseVTodo, taskToVTodo} from '../lib/ical.js'
 import {canReadProject, canWriteProject, visibleProjectIds} from '../lib/permissions.js'
@@ -18,6 +18,7 @@ const TOKEN_CALDAV = 4
 
 export const caldavTokenRouter = express.Router()
 caldavTokenRouter.use(requireAuth)
+caldavTokenRouter.use(requireRealUser)
 
 caldavTokenRouter.get('/user/settings/token/caldav', async (req, res, next) => {
 	try {

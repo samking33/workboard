@@ -6,7 +6,7 @@ import zlib from 'node:zlib'
 
 import express from 'express'
 
-import {requireAuth, verifyPassword} from '../lib/auth.js'
+import {requireAuth, requireRealUser, verifyPassword} from '../lib/auth.js'
 import {config} from '../lib/config.js'
 import {one, query, transaction} from '../lib/db.js'
 import {sendMail} from '../lib/mail.js'
@@ -14,6 +14,7 @@ import {visibleProjectIds} from '../lib/permissions.js'
 
 export const accountRouter = express.Router()
 accountRouter.use(requireAuth)
+accountRouter.use(requireRealUser)
 
 /**
  * Export and deletion both hand over or destroy everything a user owns, so both

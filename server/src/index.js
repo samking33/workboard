@@ -12,6 +12,7 @@ import {accountRouter} from './routes/account.js'
 import {authRouter} from './routes/auth.js'
 import {caldavRouter, caldavTokenRouter} from './routes/caldav.js'
 import {extrasRouter} from './routes/extras.js'
+import {linkShareAuthRouter} from './routes/linkShareAuth.js'
 import {FILE_MIGRATORS, migrationRouter} from './routes/migration.js'
 import {miscRouter} from './routes/misc.js'
 import {projectsRouter} from './routes/projects.js'
@@ -55,6 +56,10 @@ api.get('/info', (_req, res) => {
 		},
 	})
 })
+
+// Public: holding the link is the credential, so this must sit ahead of every
+// router that applies requireAuth.
+api.use(linkShareAuthRouter)
 
 // authRouter guards its own routes individually, so it is safe anywhere.
 api.use(authRouter)

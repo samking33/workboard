@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import express from 'express'
 
-import {requireAuth} from '../lib/auth.js'
+import {requireAuth, requireRealUser} from '../lib/auth.js'
 import {config} from '../lib/config.js'
 import {one, query, transaction} from '../lib/db.js'
 import {dispatchWebhook} from '../lib/webhooks.js'
@@ -12,7 +12,7 @@ import {
 	PERMISSION_READ,
 	PERMISSION_WRITE,
 	requireProject,
-	visibleProjectIds,
+	visibleProjectIdsFor,
 } from '../lib/permissions.js'
 
 export const projectsRouter = express.Router()
@@ -88,7 +88,7 @@ function shapeProject(row, maxPermission, views = []) {
 
 projectsRouter.get('/projects', async (req, res, next) => {
 	try {
-		const ids = await visibleProjectIds(req.user.id)
+		const ids = await visibleProjectIdsFor(req)
 		if (ids.length === 0) {
 			return res.json([])
 		}
@@ -197,7 +197,7 @@ export async function createDefaultViews(projectId, userId) {
 	}
 }
 
-projectsRouter.put('/projects', async (req, res, next) => {
+projectsRouter.put('/projects', requireRealUser, async (req, res, next) => {
 	try {
 		const {
 			title,

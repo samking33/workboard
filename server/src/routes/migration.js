@@ -2,7 +2,7 @@ import express from 'express'
 import multer from 'multer'
 import AdmZip from 'adm-zip'
 
-import {requireAuth} from '../lib/auth.js'
+import {requireAuth, requireRealUser} from '../lib/auth.js'
 import {config} from '../lib/config.js'
 import {one, query} from '../lib/db.js'
 import {detectDelimiter, parseCsv, parseDate, suggestMapping} from '../lib/csv.js'
@@ -12,6 +12,7 @@ import {createDefaultViews} from './projects.js'
 
 export const migrationRouter = express.Router()
 migrationRouter.use(requireAuth)
+migrationRouter.use(requireRealUser)
 
 const upload = multer({
 	storage: multer.memoryStorage(),

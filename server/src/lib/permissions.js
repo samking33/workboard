@@ -13,6 +13,12 @@ export const PERMISSION_ADMIN = 2
  * able to mistake "no access" for "read access".
  */
 export async function projectPermission(userId, projectId) {
+	// Null happens for a link share, whose id is not a user id. Answering "no
+	// access" here is what keeps the two number spaces from being confused.
+	if (!userId) {
+		return null
+	}
+
 	const row = await one(
 		`SELECT MAX(perm) AS perm FROM (
 			SELECT ? AS perm FROM projects WHERE id = ? AND owner_id = ?
@@ -59,7 +65,7 @@ export function requireProject(level, param = 'project') {
 		}
 
 		try {
-			const perm = await projectPermission(req.user.id, projectId)
+			const perm = await effectivePermission(req, projectId)
 			if (perm === null || perm < level) {
 				return res.status(403).json({message: 'forbidden'})
 			}
@@ -72,8 +78,32 @@ export function requireProject(level, param = 'project') {
 	}
 }
 
+/**
+ * Permission for whoever made this request, user or link share.
+ *
+ * A link share's claims are the authority — it was granted one project at one
+ * level when it was created, and no lookup can widen that.
+ */
+export async function effectivePermission(req, projectId) {
+	if (req.linkShare) {
+		return req.linkShare.projectId === projectId ? Number(req.linkShare.permission) : null
+	}
+	return projectPermission(req.user.id, projectId)
+}
+
+/** Project ids the caller can see at all — the basis of every list endpoint. */
+export async function visibleProjectIdsFor(req) {
+	if (req.linkShare) {
+		return [req.linkShare.projectId]
+	}
+	return visibleProjectIds(req.user.id)
+}
+
 /** Project ids the user can see at all — the basis of every list endpoint. */
 export async function visibleProjectIds(userId) {
+	if (!userId) {
+		return []
+	}
 	const rows = await one(
 		`SELECT GROUP_CONCAT(DISTINCT id) AS ids FROM (
 			SELECT id FROM projects WHERE owner_id = ?

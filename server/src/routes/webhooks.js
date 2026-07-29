@@ -3,7 +3,7 @@ import net from 'node:net'
 
 import express from 'express'
 
-import {requireAuth} from '../lib/auth.js'
+import {requireAuth, requireRealUser} from '../lib/auth.js'
 import {one, query} from '../lib/db.js'
 import {isBlockedAddress} from '../lib/outbound.js'
 import {PERMISSION_ADMIN, requireProject} from '../lib/permissions.js'
@@ -11,6 +11,7 @@ import {WEBHOOK_EVENTS} from '../lib/webhooks.js'
 
 export const webhooksRouter = express.Router()
 webhooksRouter.use(requireAuth)
+webhooksRouter.use(requireRealUser)
 
 /**
  * Webhooks are admin-only throughout: the target URL makes the server issue
