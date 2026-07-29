@@ -19,7 +19,6 @@ directories that are *not* part of this deployment:
 
 - `frontend/` — source for the client. Only needed to rebuild the UI; the built
   output is already committed.
-- `desktop/` — the Electron wrapper. Irrelevant to a web deployment.
 - `pkg/`, `magefile.go` — the original Go API this server replaces.
 
 The repo tells the platform what to run in four places, so detection has no
@@ -37,10 +36,24 @@ the repository root — not `frontend/` and not `desktop/`.
 
 ### If you see a pnpm version error
 
-It means the build is running in `frontend/` or `desktop/` rather than the root.
-`desktop/` is the Electron app: its `start` is `electron .`, which cannot serve
-a website even if its build succeeds. Making that build pass is not the fix —
-pointing the platform at the root is.
+It means the build is running in `frontend/` rather than the root. `frontend/`
+is a pnpm workspace of client sources with no start command; its built output is
+already committed. Point the platform at the repository root.
+
+## Diagnosing a 503
+
+A 503 comes from the platform's proxy, and means one of two things. The startup
+log tells you which:
+
+**Nothing is listening.** No `[fsoc] listening on …` line. The platform is
+running the wrong start command — check that it is `node server/src/index.js`
+and that the app root is the repository root.
+
+**The app is up but the database is not.** The log shows
+`[fsoc] CANNOT REACH THE DATABASE`, and `/` returns 200 while
+`/api/v1/health` returns 503 with the reason. On a managed host this is almost
+always the database refusing the app server's IP — add it to the remote-access
+allowlist. `/api/v1/health` is the endpoint to point a monitor at.
 
 ## Configuration
 

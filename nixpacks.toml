@@ -1,5 +1,6 @@
-# Without this, auto-detection walks the repo and can settle on desktop/
-# (an Electron app) or frontend/ (a pnpm workspace). Neither serves the site.
+# Without this, auto-detection walks the repo and can settle on frontend/,
+# which is a pnpm workspace of client sources and has no start command. The
+# built client is committed under frontend/dist, so nothing needs building.
 providers = ['node']
 
 [phases.setup]

@@ -150,7 +150,13 @@ const server = app.listen(config.port, async () => {
 		const version = await ping()
 		console.log(`[fsoc] database ok (${version})`)
 	} catch (err) {
-		console.error('[fsoc] cannot reach the database:', err.message)
+		// Loud and specific: a 503 from a proxy looks the same whether the process
+		// died or the database is simply unreachable, and on a managed host the
+		// usual cause is the database refusing that server's IP.
+		console.error('[fsoc] CANNOT REACH THE DATABASE —', err.message)
+		console.error(`[fsoc]   host=${config.db.host}:${config.db.port} user=${config.db.user} database=${config.db.database}`)
+		console.error('[fsoc]   the site will load but every request needing data will fail.')
+		console.error('[fsoc]   on a managed host, allow this server\'s IP in the database\'s remote-access list.')
 	}
 	attachRealtime(server)
 	startCron()
