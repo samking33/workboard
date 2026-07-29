@@ -32,7 +32,7 @@ func init() {
 
 var healthcheckCmd = &cobra.Command{
 	Use:   "healthcheck",
-	Short: "Preform a healthcheck on the Vikunja api server",
+	Short: "Preform a healthcheck on the FSOC api server",
 	PreRun: func(_ *cobra.Command, _ []string) {
 		initialize.FullInitWithoutAsync()
 	},

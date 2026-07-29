@@ -59,7 +59,7 @@ async function doRefresh(): Promise<string | null> {
 			// Refresh failed. Don't remove the token here — in a multi-tab scenario,
 			// another tab may have successfully rotated the refresh token, and clearing
 			// localStorage would log out that tab too. Let the caller decide.
-			console.warn('[Vikunja] Token refresh failed:', retryErr)
+			console.warn('[FSOC] Token refresh failed:', retryErr)
 			return null
 		}
 	}

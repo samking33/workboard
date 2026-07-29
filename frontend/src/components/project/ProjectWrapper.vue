@@ -43,6 +43,12 @@
 						>
 							{{ getViewTitle(view) }}
 						</DropdownItem>
+						<DropdownItem
+							v-if="canManageAccess"
+							:to="accessRoute"
+						>
+							{{ $t('project.access.title') }}
+						</DropdownItem>
 					</div>
 				</template>
 			</Dropdown>
@@ -64,6 +70,20 @@
 					:tabindex="isOverflowing ? -1 : undefined"
 				>
 					{{ getViewTitle(view) }}
+				</BaseButton>
+				<!-- Not a task view: opens the share dialog. Only project admins
+					 can change who has access, so nobody else sees the tab. -->
+				<BaseButton
+					v-if="canManageAccess"
+					class="switch-view-button switch-view-button--access"
+					:to="accessRoute"
+					:tabindex="isOverflowing ? -1 : undefined"
+				>
+					<Icon
+						icon="users"
+						class="switch-view-button__icon"
+					/>
+					{{ $t('project.access.title') }}
 				</BaseButton>
 			</div>
 			<slot name="header" />
@@ -99,6 +119,7 @@ import {useTitle} from '@/composables/useTitle'
 
 import {useBaseStore} from '@/stores/base'
 import {useProjectStore} from '@/stores/projects'
+import {PERMISSIONS} from '@/constants/permissions'
 import {useViewFiltersStore} from '@/stores/viewFilters'
 
 import type {IProject} from '@/modelTypes/IProject'
@@ -150,6 +171,16 @@ const currentProject = computed<IProject>(() => {
 useTitle(() => currentProject.value?.id ? getProjectTitle(currentProject.value) : '')
 
 const views = computed(() => projectStore.projects[props.projectId]?.views)
+
+// Only admins can change sharing, and the owner always is one. Showing the tab
+// to anyone else would just lead to a dialog they cannot act on.
+const canManageAccess = computed(() =>
+	(projectStore.projects[props.projectId]?.maxPermission ?? PERMISSIONS.READ) >= PERMISSIONS.ADMIN)
+
+const accessRoute = computed(() => ({
+	name: 'project.settings.share',
+	params: {projectId: props.projectId},
+}))
 
 const activeViewTitle = computed(() => {
 	const activeView = views.value?.find((v: IProjectView) => v.id === props.viewId)
@@ -258,6 +289,24 @@ function getViewRoute(view: IProjectView) {
 		font-weight: bold;
 		box-shadow: var(--shadow-xs);
 	}
+}
+
+// Access is not a task view — a divider and a muted tone keep it from reading
+// as another way to look at the same tasks.
+.switch-view-button--access {
+	display: inline-flex;
+	align-items: center;
+	gap: .35rem;
+	margin-inline-start: .25rem;
+	padding-inline-start: .75rem;
+	border-inline-start: 1px solid var(--grey-300);
+	border-start-start-radius: 0;
+	border-end-start-radius: 0;
+	color: var(--grey-500);
+}
+
+.switch-view-button__icon {
+	font-size: .8em;
 }
 
 // FIXME: this should be in notification and set via a prop

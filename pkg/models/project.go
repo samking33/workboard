@@ -1502,6 +1502,11 @@ func (p *Project) Delete(s *xorm.Session, a web.Auth) (err error) {
 		return
 	}
 
+	err = deleteStorageItemsForProject(s, p.ID)
+	if err != nil {
+		return
+	}
+
 	_, err = s.Where("project_id = ?", p.ID).Delete(&ProjectUser{})
 	if err != nil {
 		return

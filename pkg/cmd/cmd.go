@@ -24,17 +24,15 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "vikunja",
-	Short: "Vikunja is the to-do app to organize your life.",
-	Long: `Vikunja (/vɪˈkuːnjə/)
-The to-do app to organize your life.
+	Use:   "fsoc",
+	Short: "FSOC — projects, tasks and files for the team.",
+	Long: `FSOC
 
-Also one of the two wild South American camelids which live in the high
-alpine areas of the Andes and a relative of the llama.
+Projects, tasks and project storage for the team: every project keeps its
+documents, links, images and videos alongside its work.
 
-Vikunja is a self-hosted To-Do list application with a web app and mobile apps for all platforms. It is licensed under the AGPL-3.0-or-later.
-
-Find out more at vikunja.io.`,
+FSOC is built on Vikunja and, like it, is licensed under the AGPL-3.0-or-later.
+Source: https://code.vikunja.io/vikunja`,
 	PreRun: webCmd.PreRun,
 	Run:    webCmd.Run,
 }

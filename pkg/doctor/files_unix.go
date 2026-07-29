@@ -109,7 +109,7 @@ func checkDirectoryOwnership(info os.FileInfo) []CheckResult {
 	switch {
 	case currentUID != 0 && currentUID != int(uid):
 		errMsg := fmt.Sprintf(
-			"directory owned by uid %d but Vikunja runs as uid %d",
+			"directory owned by uid %d but FSOC runs as uid %d",
 			uid, currentUID,
 		)
 		if nsActive {
@@ -127,7 +127,7 @@ func checkDirectoryOwnership(info os.FileInfo) []CheckResult {
 			Name:   "Ownership match",
 			Passed: false,
 			Error: fmt.Sprintf(
-				"directory owned by gid %d but Vikunja process is not a member of that group",
+				"directory owned by gid %d but FSOC process is not a member of that group",
 				gid,
 			),
 		})

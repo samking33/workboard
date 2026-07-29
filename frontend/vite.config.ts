@@ -170,8 +170,8 @@ function getBuildConfig(env: Record<string, string>) {
 				injectRegister: false,
 				useCredentials: true,
 				manifest: {
-					name: 'Vikunja',
-					short_name: 'Vikunja',
+					name: 'FSOC',
+					short_name: 'FSOC',
 					theme_color: '#1973ff',
 					icons: [
 						{

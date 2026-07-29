@@ -55,3 +55,20 @@ PLAN.md
 plans/
 /.crush/
 /.playwright-mcp
+
+# Local dev build produced by `go build -o vikunja-dev`
+/vikunja-dev
+
+# Production build output and local secrets
+/deploy/dist/
+/deploy/*.env
+!/deploy/.env.example
+
+# Runtime data — never commit an instance's database, uploads or live config.
+*.db
+*.db-wal
+*.db-shm
+/files/
+/config.yml
+/config.yaml
+/vikunja.env

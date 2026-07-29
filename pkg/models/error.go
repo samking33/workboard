@@ -564,6 +564,89 @@ func (err *ErrProjectHasNoBackground) HTTPError() web.HTTPError {
 	}
 }
 
+// ErrStorageItemDoesNotExist represents an error where a storage item does not exist
+type ErrStorageItemDoesNotExist struct {
+	StorageItemID int64
+}
+
+// IsErrStorageItemDoesNotExist checks if an error is ErrStorageItemDoesNotExist.
+func IsErrStorageItemDoesNotExist(err error) bool {
+	_, ok := err.(*ErrStorageItemDoesNotExist)
+	return ok
+}
+
+func (err *ErrStorageItemDoesNotExist) Error() string {
+	return fmt.Sprintf("Storage item does not exist [StorageItemID: %d]", err.StorageItemID)
+}
+
+// ErrCodeStorageItemDoesNotExist holds the unique world-error code of this error
+const ErrCodeStorageItemDoesNotExist = 3016
+
+// HTTPError holds the http error description
+func (err *ErrStorageItemDoesNotExist) HTTPError() web.HTTPError {
+	return web.HTTPError{
+		HTTPCode: http.StatusNotFound,
+		Code:     ErrCodeStorageItemDoesNotExist,
+		Message:  "This storage item does not exist.",
+	}
+}
+
+// ErrStorageItemInvalid represents a storage item which is neither a valid link nor a valid file
+type ErrStorageItemInvalid struct {
+	Reason string
+}
+
+// IsErrStorageItemInvalid checks if an error is ErrStorageItemInvalid.
+func IsErrStorageItemInvalid(err error) bool {
+	_, ok := err.(*ErrStorageItemInvalid)
+	return ok
+}
+
+func (err *ErrStorageItemInvalid) Error() string {
+	return fmt.Sprintf("Storage item is invalid [Reason: %s]", err.Reason)
+}
+
+// ErrCodeStorageItemInvalid holds the unique world-error code of this error
+const ErrCodeStorageItemInvalid = 3017
+
+// HTTPError holds the http error description
+func (err *ErrStorageItemInvalid) HTTPError() web.HTTPError {
+	return web.HTTPError{
+		HTTPCode: http.StatusBadRequest,
+		Code:     ErrCodeStorageItemInvalid,
+		Message:  "The storage item is invalid: " + err.Reason,
+	}
+}
+
+// ErrStorageItemNotPreviewable represents a storage item whose type must not be
+// rendered inline in the browser.
+type ErrStorageItemNotPreviewable struct {
+	StorageItemID int64
+	Mime          string
+}
+
+// IsErrStorageItemNotPreviewable checks if an error is ErrStorageItemNotPreviewable.
+func IsErrStorageItemNotPreviewable(err error) bool {
+	_, ok := err.(*ErrStorageItemNotPreviewable)
+	return ok
+}
+
+func (err *ErrStorageItemNotPreviewable) Error() string {
+	return fmt.Sprintf("Storage item cannot be previewed [StorageItemID: %d, Mime: %s]", err.StorageItemID, err.Mime)
+}
+
+// ErrCodeStorageItemNotPreviewable holds the unique world-error code of this error
+const ErrCodeStorageItemNotPreviewable = 3018
+
+// HTTPError holds the http error description
+func (err *ErrStorageItemNotPreviewable) HTTPError() web.HTTPError {
+	return web.HTTPError{
+		HTTPCode: http.StatusUnsupportedMediaType,
+		Code:     ErrCodeStorageItemNotPreviewable,
+		Message:  "This file type cannot be previewed. Download it instead.",
+	}
+}
+
 // ==============
 // Task errors
 // ==============

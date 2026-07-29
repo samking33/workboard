@@ -79,6 +79,15 @@
 						>
 							<!-- Assignees -->
 							<div class="detail-title">
+								<BaseButton
+									v-if="canRemoveField('assignees')"
+									v-tooltip="$t('task.detail.removeField')"
+									class="field-remove"
+									:aria-label="$t('task.detail.removeField')"
+									@click="removeField('assignees')"
+								>
+									<Icon icon="times" />
+								</BaseButton>
 								<Icon icon="users" />
 								{{ $t('task.attributes.assignees') }}
 							</div>
@@ -105,6 +114,15 @@
 							>
 								<!-- Priority -->
 								<div class="detail-title">
+									<BaseButton
+										v-if="canRemoveField('priority')"
+										v-tooltip="$t('task.detail.removeField')"
+										class="field-remove"
+										:aria-label="$t('task.detail.removeField')"
+										@click="removeField('priority')"
+									>
+										<Icon icon="times" />
+									</BaseButton>
 									<Icon icon="exclamation-circle" />
 									{{ $t('task.attributes.priority') }}
 								</div>
@@ -126,6 +144,15 @@
 							>
 								<!-- Due Date -->
 								<div class="detail-title">
+									<BaseButton
+										v-if="canRemoveField('dueDate')"
+										v-tooltip="$t('task.detail.removeField')"
+										class="field-remove"
+										:aria-label="$t('task.detail.removeField')"
+										@click="removeField('dueDate')"
+									>
+										<Icon icon="times" />
+									</BaseButton>
 									<Icon icon="calendar" />
 									{{ $t('task.attributes.dueDate') }}
 								</div>
@@ -160,6 +187,15 @@
 							>
 								<!-- Progress -->
 								<div class="detail-title">
+									<BaseButton
+										v-if="canRemoveField('percentDone')"
+										v-tooltip="$t('task.detail.removeField')"
+										class="field-remove"
+										:aria-label="$t('task.detail.removeField')"
+										@click="removeField('percentDone')"
+									>
+										<Icon icon="times" />
+									</BaseButton>
 									<Icon icon="percent" />
 									{{ $t('task.attributes.percentDone') }}
 								</div>
@@ -181,6 +217,15 @@
 							>
 								<!-- Start Date -->
 								<div class="detail-title">
+									<BaseButton
+										v-if="canRemoveField('startDate')"
+										v-tooltip="$t('task.detail.removeField')"
+										class="field-remove"
+										:aria-label="$t('task.detail.removeField')"
+										@click="removeField('startDate')"
+									>
+										<Icon icon="times" />
+									</BaseButton>
 									<Icon icon="play" />
 									{{ $t('task.attributes.startDate') }}
 								</div>
@@ -215,6 +260,15 @@
 							>
 								<!-- End Date -->
 								<div class="detail-title">
+									<BaseButton
+										v-if="canRemoveField('endDate')"
+										v-tooltip="$t('task.detail.removeField')"
+										class="field-remove"
+										:aria-label="$t('task.detail.removeField')"
+										@click="removeField('endDate')"
+									>
+										<Icon icon="times" />
+									</BaseButton>
 									<Icon icon="stop" />
 									{{ $t('task.attributes.endDate') }}
 								</div>
@@ -249,6 +303,15 @@
 							>
 								<!-- Reminders -->
 								<div class="detail-title">
+									<BaseButton
+										v-if="canRemoveField('reminders')"
+										v-tooltip="$t('task.detail.removeField')"
+										class="field-remove"
+										:aria-label="$t('task.detail.removeField')"
+										@click="removeField('reminders')"
+									>
+										<Icon icon="times" />
+									</BaseButton>
 									<Icon :icon="['far', 'clock']" />
 									{{ $t('task.attributes.reminders') }}
 								</div>
@@ -272,6 +335,15 @@
 								<!-- Repeat after -->
 								<div class="is-flex is-justify-content-space-between">
 									<div class="detail-title">
+										<BaseButton
+											v-if="canRemoveField('repeatAfter')"
+											v-tooltip="$t('task.detail.removeField')"
+											class="field-remove"
+											:aria-label="$t('task.detail.removeField')"
+											@click="removeField('repeatAfter')"
+										>
+											<Icon icon="times" />
+										</BaseButton>
 										<Icon icon="history" />
 										{{ $t('task.attributes.repeat') }}
 									</div>
@@ -304,6 +376,15 @@
 							>
 								<!-- Color -->
 								<div class="detail-title">
+									<BaseButton
+										v-if="canRemoveField('color')"
+										v-tooltip="$t('task.detail.removeField')"
+										class="field-remove"
+										:aria-label="$t('task.detail.removeField')"
+										@click="removeField('color')"
+									>
+										<Icon icon="times" />
+									</BaseButton>
 									<Icon icon="fill-drip" />
 									{{ $t('task.attributes.color') }}
 								</div>
@@ -323,6 +404,15 @@
 						class="labels-list details"
 					>
 						<div class="detail-title">
+							<BaseButton
+								v-if="canRemoveField('labels')"
+								v-tooltip="$t('task.detail.removeField')"
+								class="field-remove"
+								:aria-label="$t('task.detail.removeField')"
+								@click="removeField('labels')"
+							>
+								<Icon icon="times" />
+							</BaseButton>
 							<span class="icon is-grey">
 								<Icon icon="tags" />
 							</span>
@@ -362,6 +452,15 @@
 						v-show="activeFields.attachments || hasAttachments"
 						class="content attachments"
 					>
+						<BaseButton
+							v-if="canRemoveField('attachments')"
+							v-tooltip="$t('task.detail.removeField')"
+							class="field-remove field-remove--floating"
+							:aria-label="$t('task.detail.removeField')"
+							@click="removeField('attachments')"
+						>
+							<Icon icon="times" />
+						</BaseButton>
 						<Attachments
 							:ref="e => { setFieldRef('attachments', e); attachmentsRef = e as any }"
 							:edit-enabled="canWrite"
@@ -377,6 +476,15 @@
 						:ref="e => setFieldRef('timeTracking', e)"
 						class="content time-tracking"
 					>
+						<BaseButton
+							v-if="canRemoveField('timeTracking')"
+							v-tooltip="$t('task.detail.removeField')"
+							class="field-remove field-remove--floating"
+							:aria-label="$t('task.detail.removeField')"
+							@click="removeField('timeTracking')"
+						>
+							<Icon icon="times" />
+						</BaseButton>
 						<TaskTimeTracking :task-id="task.id" />
 					</div>
 
@@ -386,6 +494,15 @@
 						class="content details mbe-0"
 					>
 						<h2 class="task-section-title">
+							<BaseButton
+								v-if="canRemoveField('relatedTasks')"
+								v-tooltip="$t('task.detail.removeField')"
+								class="field-remove"
+								:aria-label="$t('task.detail.removeField')"
+								@click="removeField('relatedTasks')"
+							>
+								<Icon icon="times" />
+							</BaseButton>
 							<span class="icon is-grey">
 								<Icon icon="sitemap" />
 							</span>
@@ -407,6 +524,15 @@
 						class="content details"
 					>
 						<h2 class="task-section-title">
+							<BaseButton
+								v-if="canRemoveField('moveProject')"
+								v-tooltip="$t('task.detail.removeField')"
+								class="field-remove"
+								:aria-label="$t('task.detail.removeField')"
+								@click="removeField('moveProject')"
+							>
+								<Icon icon="times" />
+							</BaseButton>
 							<span class="icon is-grey">
 								<Icon icon="list" />
 							</span>
@@ -477,6 +603,8 @@
 							v-shortcut="'KeyL'"
 							variant="secondary"
 							icon="tags"
+							:class="{'is-active-field': activeFields.labels}"
+							:aria-pressed="activeFields.labels"
 							@click="setFieldActive('labels')"
 						>
 							{{ $t('task.detail.actions.label') }}
@@ -485,6 +613,8 @@
 							v-shortcut="'KeyP'"
 							variant="secondary"
 							icon="exclamation-circle"
+							:class="{'is-active-field': activeFields.priority}"
+							:aria-pressed="activeFields.priority"
 							@click="setFieldActive('priority')"
 						>
 							{{ $t('task.detail.actions.priority') }}
@@ -492,6 +622,8 @@
 						<XButton
 							variant="secondary"
 							icon="percent"
+							:class="{'is-active-field': activeFields.percentDone}"
+							:aria-pressed="activeFields.percentDone"
 							@click="setFieldActive('percentDone')"
 						>
 							{{ $t('task.detail.actions.percentDone') }}
@@ -501,6 +633,8 @@
 							variant="secondary"
 							icon="fill-drip"
 							:icon-color="color"
+							:class="{'is-active-field': activeFields.color}"
+							:aria-pressed="activeFields.color"
 							@click="setFieldActive('color')"
 						>
 							{{ $t('task.detail.actions.color') }}
@@ -513,6 +647,8 @@
 							v-cy="'taskDetail.assign'"
 							variant="secondary"
 							icon="users"
+							:class="{'is-active-field': activeFields.assignees}"
+							:aria-pressed="activeFields.assignees"
 							@click="setFieldActive('assignees')"
 						>
 							{{ $t('task.detail.actions.assign') }}
@@ -521,6 +657,8 @@
 							v-shortcut="'KeyF'"
 							variant="secondary"
 							icon="paperclip"
+							:class="{'is-active-field': activeFields.attachments}"
+							:aria-pressed="activeFields.attachments"
 							@click="openAttachments()"
 						>
 							{{ $t('task.detail.actions.attachments') }}
@@ -529,6 +667,8 @@
 							v-shortcut="'KeyR'"
 							variant="secondary"
 							icon="sitemap"
+							:class="{'is-active-field': activeFields.relatedTasks}"
+							:aria-pressed="activeFields.relatedTasks"
 							@click="setRelatedTasksActive()"
 						>
 							{{ $t('task.detail.actions.relatedTasks') }}
@@ -537,6 +677,8 @@
 							v-shortcut="'KeyM'"
 							variant="secondary"
 							icon="list"
+							:class="{'is-active-field': activeFields.moveProject}"
+							:aria-pressed="activeFields.moveProject"
 							@click="setFieldActive('moveProject')"
 						>
 							{{ $t('task.detail.actions.moveProject') }}
@@ -556,6 +698,8 @@
 							v-cy="'taskTrackTimeAction'"
 							variant="secondary"
 							:icon="['far', 'clock']"
+							:class="{'is-active-field': activeFields.timeTracking}"
+							:aria-pressed="activeFields.timeTracking"
 							@click="setFieldActive('timeTracking')"
 						>
 							{{ $t('task.detail.actions.timeTracking') }}
@@ -565,6 +709,8 @@
 							v-shortcut="'KeyD'"
 							variant="secondary"
 							icon="calendar"
+							:class="{'is-active-field': activeFields.dueDate}"
+							:aria-pressed="activeFields.dueDate"
 							@click="setFieldActive('dueDate')"
 						>
 							{{ $t('task.detail.actions.dueDate') }}
@@ -572,6 +718,8 @@
 						<XButton
 							variant="secondary"
 							icon="play"
+							:class="{'is-active-field': activeFields.startDate}"
+							:aria-pressed="activeFields.startDate"
 							@click="setFieldActive('startDate')"
 						>
 							{{ $t('task.detail.actions.startDate') }}
@@ -579,6 +727,8 @@
 						<XButton
 							variant="secondary"
 							icon="stop"
+							:class="{'is-active-field': activeFields.endDate}"
+							:aria-pressed="activeFields.endDate"
 							@click="setFieldActive('endDate')"
 						>
 							{{ $t('task.detail.actions.endDate') }}
@@ -587,6 +737,8 @@
 							v-shortcut="reminderShortcut"
 							variant="secondary"
 							:icon="['far', 'clock']"
+							:class="{'is-active-field': activeFields.reminders}"
+							:aria-pressed="activeFields.reminders"
 							@click="setFieldActive('reminders')"
 						>
 							{{ $t('task.detail.actions.reminders') }}
@@ -594,6 +746,8 @@
 						<XButton
 							variant="secondary"
 							icon="history"
+							:class="{'is-active-field': activeFields.repeatAfter}"
+							:aria-pressed="activeFields.repeatAfter"
 							@click="setFieldActive('repeatAfter')"
 						>
 							{{ $t('task.detail.actions.repeatAfter') }}
@@ -1060,6 +1214,61 @@ function setFieldRef(name, e) {
 	activeFieldElements[name] = unrefElement(e)
 }
 
+/**
+ * True when the field currently holds something. Mirrors the conditions
+ * setActiveFields() uses to decide what to show on load.
+ */
+function fieldHasData(fieldName: FieldType): boolean {
+	switch (fieldName) {
+		case 'assignees':
+			return task.value.assignees.length > 0
+		case 'attachments':
+			return task.value.attachments.length > 0
+		case 'labels':
+			return task.value.labels.length > 0
+		case 'reminders':
+			return task.value.reminders.length > 0
+		case 'relatedTasks':
+			return Object.keys(task.value.relatedTasks).length > 0
+		case 'timeTracking':
+			return (task.value.timeEntriesCount ?? 0) > 0
+		case 'dueDate':
+			return task.value.dueDate !== null
+		case 'startDate':
+			return task.value.startDate !== null
+		case 'endDate':
+			return task.value.endDate !== null
+		case 'percentDone':
+			return task.value.percentDone > 0
+		case 'priority':
+			return task.value.priority !== PRIORITIES.UNSET
+		case 'repeatAfter': {
+			// repeatAfter is either a plain seconds number or {type, amount}.
+			const repeat = task.value.repeatAfter
+			const amount = typeof repeat === 'number' ? repeat : (repeat?.amount ?? 0)
+			return amount > 0 || task.value.repeatMode !== TASK_REPEAT_MODES.REPEAT_MODE_DEFAULT
+		}
+		case 'color':
+			return task.value.hexColor !== '' && task.value.hexColor !== undefined
+		// moveProject is an action panel, never holds data of its own.
+		default:
+			return false
+	}
+}
+
+/**
+ * Whether a section can be dismissed. Opening one by mistake used to be
+ * unrecoverable without reloading the task. A section holding real data has no
+ * remove button — hiding it would read as deleting the data.
+ */
+function canRemoveField(fieldName: FieldType): boolean {
+	return canWrite.value && activeFields[fieldName] && !fieldHasData(fieldName)
+}
+
+function removeField(fieldName: FieldType) {
+	activeFields[fieldName] = false
+}
+
 function setFieldActive(fieldName: keyof typeof activeFields) {
 	activeFields[fieldName] = true
 	nextTick(() => {
@@ -1399,6 +1608,37 @@ h2 .button {
 	}
 }
 
+// Dismiss an accidentally-opened section. Only rendered while the section is
+// empty, so this can never look like it deletes data.
+.field-remove {
+	margin-inline-start: .5rem;
+	padding: 0 .25rem;
+	color: var(--grey-400);
+	font-size: .8em;
+	vertical-align: middle;
+	opacity: 0;
+	transition: opacity $transition, color $transition;
+
+	&:hover,
+	&:focus {
+		color: var(--danger);
+	}
+}
+
+// Keyboard users never hover, so focus must reveal it too.
+.detail-title:hover .field-remove,
+.task-section-title:hover .field-remove,
+.content:hover > .field-remove,
+.field-remove:focus-visible {
+	opacity: 1;
+}
+
+// Sections whose heading lives inside a child component get it in the corner.
+.field-remove--floating {
+	float: inline-end;
+	margin-block-start: .35rem;
+}
+
 .action-buttons {
 	@media screen and (min-width: $tablet) {
 		position: sticky;
@@ -1413,6 +1653,12 @@ h2 .button {
 
 		&.has-light-text {
 			color: var(--white);
+		}
+
+		// Marks which sections are currently shown.
+		&.is-active-field {
+			border-color: var(--primary);
+			color: var(--primary);
 		}
 
 		&.button--mark-done {

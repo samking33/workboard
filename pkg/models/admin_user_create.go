@@ -30,7 +30,7 @@ type CreateUserBody struct {
 	// The full name of the new user. Optional.
 	Name string `json:"name" doc:"The full name of the new user. Optional."`
 	// The language of the new user. Must be a valid IETF BCP 47 language code and exist in Vikunja.
-	Language string `json:"language" valid:"language" doc:"IETF BCP 47 language code; must exist in Vikunja."`
+	Language string `json:"language" valid:"language" doc:"IETF BCP 47 language code; must exist in FSOC."`
 	user.APIUserPassword
 	// Mark the new user as an instance admin.
 	IsAdmin bool `json:"is_admin" doc:"Mark the new user as an instance admin."`

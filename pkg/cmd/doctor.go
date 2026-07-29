@@ -33,9 +33,9 @@ func init() {
 
 var doctorCmd = &cobra.Command{
 	Use:   "doctor",
-	Short: "Run diagnostic checks on your Vikunja installation",
+	Short: "Run diagnostic checks on your FSOC installation",
 	Long: `The doctor command runs a series of diagnostic checks to help troubleshoot
-issues with your Vikunja installation. It checks:
+issues with your FSOC installation. It checks:
 
 - System information (version, user, working directory)
 - Configuration (config file, public URL, JWT secret, CORS)

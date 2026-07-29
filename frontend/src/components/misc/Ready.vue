@@ -107,7 +107,7 @@ const baseStore = useBaseStore()
 }
 
 .offline {
-	background: url('@/assets/llama-nightscape.jpg') no-repeat center;
+	background: linear-gradient(160deg, #196aff 0%, #0b3fa8 55%, #082a6e 100%);
 	background-size: cover;
 	block-size: 100vh;
 }

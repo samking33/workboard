@@ -1,0 +1,51 @@
+# Production configuration — non-secret settings only.
+#
+# FSOC does NOT interpolate ${VARS} inside this file. Instead viper reads
+# VIKUNJA_<SECTION>_<KEY> from the environment and those override anything here,
+# so every secret is supplied as an env var by the service unit and this file
+# stays safe to commit. See .env.example for the full list.
+#
+# Copy to /etc/vikunja/config.yml (or next to the binary) on the server.
+
+service:
+  # Accounts are created by an admin with `vikunja user create`. Leave this off
+  # unless you actually want the public to self-register on your domain.
+  enableregistration: false
+  timezone: "Asia/Kolkata"
+
+  # Set via env, they differ per environment and one is a secret:
+  #   VIKUNJA_SERVICE_PUBLICURL   exact public origin, e.g. https://tasks.example.com/
+  #   VIKUNJA_SERVICE_SECRET      signs session tokens
+  #   VIKUNJA_SERVICE_ROOTPATH    data directory, e.g. /var/www/vikunja
+
+database:
+  type: mysql
+  # Shared hosting caps connections well below the default of 100; exceeding the
+  # account limit surfaces as intermittent "too many connections" under load
+  # rather than at boot, so keep this conservative.
+  maxopenconnections: 20
+  maxidleconnections: 10
+  # VIKUNJA_DATABASE_HOST / _DATABASE / _USER / _PASSWORD come from the environment.
+
+files:
+  # Uploads live on disk, not in the database. This path must be on persistent
+  # storage and must be in your backups alongside the mysqldump.
+  maxsize: "100MB"
+  # VIKUNJA_FILES_BASEPATH e.g. /var/www/vikunja/files
+
+mailer:
+  # Without a working mailer, password resets and reminders fail silently.
+  enabled: true
+  port: 587
+  # VIKUNJA_MAILER_HOST / _USERNAME / _PASSWORD / _FROMEMAIL come from the environment.
+
+log:
+  level: "INFO"
+  # nginx already logs every request; this would duplicate it.
+  http: "off"
+
+ratelimit:
+  enabled: true
+  kind: user
+  period: 60
+  limit: 120

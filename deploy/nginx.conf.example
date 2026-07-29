@@ -1,0 +1,53 @@
+# FSOC behind nginx with TLS. Adjust server_name and cert paths.
+#
+# FSOC serves its own frontend, so there is no separate web root — every
+# request proxies to the app.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name tasks.example.com;
+    # certbot writes its challenge here; everything else goes to https
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 301 https://$host$request_uri; }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name tasks.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/tasks.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/tasks.example.com/privkey.pem;
+
+    # Must be at least as large as files.maxsize in config.yml, or uploads fail
+    # at nginx with a 413 before FSOC ever sees them.
+    client_max_body_size 100M;
+
+    # Large uploads and video previews stream for a while.
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+
+    location / {
+        proxy_pass http://127.0.0.1:3456;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        # Without this FSOC builds http:// links behind a TLS terminator.
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        # Storage previews and downloads are streamed; buffering them through
+        # nginx would spool whole videos to disk first.
+        proxy_buffering off;
+    }
+}
+
+# The oversight panel is NOT exposed here on purpose: it can read every
+# project's data. Reach it over an SSH tunnel instead:
+#   ssh -L 3457:127.0.0.1:3457 user@server
+# then open http://localhost:3457

@@ -12,8 +12,8 @@
 		"addToHomeScreen": "הוסף אפליקציה זו למסך אם שלך לגישה מהירה וחוויה משופרה.",
 		"goToOverview": "לדף הסקירה הכללית",
 		"project": {
-			"importText": "ייבוא פרויקטים ומטלות משירותים אחרים ל-Vikunja:",
-			"import": "ייבוא נתונים שלך ל-Vikunja"
+			"importText": "ייבוא פרויקטים ומטלות משירותים אחרים ל-FSOC:",
+			"import": "ייבוא נתונים שלך ל-FSOC"
 		}
 	},
 	"demo": {
@@ -115,7 +115,7 @@
 			},
 			"caldav": {
 				"title": "CalDAV",
-				"more": "עוד מידע על CalDAV ב-Vikunja",
+				"more": "עוד מידע על CalDAV ב-FSOC",
 				"tokens": "אסימוני CalDAV"
 			},
 			"avatar": {
@@ -142,7 +142,7 @@
 			},
 			"apiTokens": {
 				"title": "אסימוני API",
-				"general": "אסימוני API מאפשרים שימוש ב-Vikunja's API בלי credentials של המשתמש.",
+				"general": "אסימוני API מאפשרים שימוש ב-FSOC's API בלי credentials של המשתמש.",
 				"apiDocs": "לבדוק תעוד api",
 				"createAToken": "ליצור אסימון",
 				"createToken": "ליצור אסימון",
@@ -168,7 +168,7 @@
 			}
 		},
 		"deletion": {
-			"title": "מחיקת חשבון Vikunja שלך",
+			"title": "מחיקת חשבון FSOC שלך",
 			"text1": "מחיקת חשבון לצמיתות ולא ניתן לבטל. נמחק כל הפרויקטים ומטלות שלך וכל הקשור להם.",
 			"text2": "הכנס סיסמה כדי להתקדם. יישלח אימייל עם הוראות.",
 			"text3": "ללחוץ על הכפתור מתחת כדי להתקדם. יישלח אימייל עם הוראות.",
@@ -176,7 +176,7 @@
 			"requestSuccess": "הבקשה התקבלה. יישלח אימייל עם הוראות.",
 			"passwordRequired": "נא להכניס סיסמתך.",
 			"confirmSuccess": "אישרת ביטול חשבונך בהצלחה. החשבון יתבטל בעוד שלושה ימים.",
-			"scheduled": "נבטל חשבון Vikunja שלך ב-{date} ({dateSince}).",
+			"scheduled": "נבטל חשבון FSOC שלך ב-{date} ({dateSince}).",
 			"scheduledCancel": "הקש כאן לבטל ביטול חשבונך.",
 			"scheduledCancelText": "הכנס סיסמתך להלן כדי לבטל את ביטול חשבונך:",
 			"scheduledCancelButton": "נא ללחוץ על הכפתור מתחת כדי לבטל את פעולת ביטול חשבונך.",
@@ -184,12 +184,12 @@
 			"scheduledCancelSuccess": "לא נמחק חשבונך."
 		},
 		"export": {
-			"title": "יצוא נתוני Vikunja",
-			"description": "אפשר לבקש עותק של כל נתוני Vikunja שלך הכולל פרויקטים, מטלות וכל הקשור להם. ניתן לייבא נתונים אלו לכל מופע Vikunja דרך פעולת הניוד.",
+			"title": "יצוא נתוני FSOC",
+			"description": "אפשר לבקש עותק של כל נתוני FSOC שלך הכולל פרויקטים, מטלות וכל הקשור להם. ניתן לייבא נתונים אלו לכל מופע FSOC דרך פעולת הניוד.",
 			"descriptionPasswordRequired": "נא להכניס סיסמה כדי להתקדם:",
-			"request": "בקשת עותק נתוני Vikunja שלי",
-			"success": "ביקשת נתוני Vikunja בהצלחה! יישלח לך אימייל כשיהיה מוכן להודה.",
-			"downloadTitle": "הורד נתוני Vikunja המיוצא שלך"
+			"request": "בקשת עותק נתוני FSOC שלי",
+			"success": "ביקשת נתוני FSOC בהצלחה! יישלח לך אימייל כשיהיה מוכן להודה.",
+			"downloadTitle": "הורד נתוני FSOC המיוצא שלך"
 		}
 	},
 	"project": {
@@ -269,7 +269,7 @@
 			"links": {
 				"title": "לשתף לינקים",
 				"what": "מהו לינק משותף?",
-				"explanation": "שיתוף לינקים מאפשר לשתף פרויקט עם משתמשים אחרים בלי חשבון Vikunja.",
+				"explanation": "שיתוף לינקים מאפשר לשתף פרויקט עם משתמשים אחרים בלי חשבון FSOC.",
 				"create": "ליצור לינק לשיתוף",
 				"name": "שם (אופציונלי)",
 				"namePlaceholder": "למשל פלוני אלמוני",
@@ -457,18 +457,18 @@
 	},
 	"migrate": {
 		"title": "ייבוא משירותים אחרים",
-		"titleService": "לייבוא הנתונים שלך מ-{name} ל-Vikunja",
+		"titleService": "לייבוא הנתונים שלך מ-{name} ל-FSOC",
 		"description": "הקלק על הלוגו של אחד משירותי צד שלישי למטה כדי להתחיל.",
-		"descriptionDo": "Vikunja תייבא כל הרשימות, מטלות, רשומות, תזכורות וקבצים שיש לך הרשאת גישה אליהם.",
-		"authorize": "הקש למטה כדי להרשות ל-Vikunja גישה לחשבון {name}.",
+		"descriptionDo": "FSOC תייבא כל הרשימות, מטלות, רשומות, תזכורות וקבצים שיש לך הרשאת גישה אליהם.",
+		"authorize": "הקש למטה כדי להרשות ל-FSOC גישה לחשבון {name}.",
 		"getStarted": "התחל",
 		"inProgress": "יבוא בפעולה…",
 		"alreadyMigrated1": "נראה שכבר ייבאת החומר שלך מ-{name} בתאריך {date}.",
 		"alreadyMigrated2": "ייבוא חוזר אפשרי אבל יכול ליצור כפילויות. בטוח?",
 		"confirm": "כן, בטוח. התחל ניוד כעת!",
-		"importUpload": "כדי לייבא נתונים בשם {name} לתוך Vikunja, יש ללחוץ על הכפתור מתחת לבחור קובץ.",
+		"importUpload": "כדי לייבא נתונים בשם {name} לתוך FSOC, יש ללחוץ על הכפתור מתחת לבחור קובץ.",
 		"upload": "העלאת קובץ",
-		"migrationStartedWillReciveEmail": "Vikunja תייבא כעת רשימות/פרויקטים, מטלות, רשומות, תזכורות וקבצים שלך משירות {service}",
+		"migrationStartedWillReciveEmail": "FSOC תייבא כעת רשימות/פרויקטים, מטלות, רשומות, תזכורות וקבצים שלך משירות {service}",
 		"migrationInProgress": "ניוד מתנהל כעת. נא להמתין עד סיומו."
 	},
 	"label": {

@@ -1,0 +1,28 @@
+- id: 1
+  project_id: 1
+  title: Test document
+  kind: 0
+  url: ""
+  file_id: 1
+  created_by_id: 1
+  created: 2018-12-01 15:13:12
+  updated: 2018-12-01 15:13:12
+- id: 2
+  project_id: 1
+  title: Test link
+  kind: 1
+  url: https://vikunja.io
+  file_id: 0
+  created_by_id: 1
+  created: 2018-12-01 15:13:12
+  updated: 2018-12-01 15:13:12
+# Belongs to a project user 1 has no access to.
+- id: 3
+  project_id: 2
+  title: Other project document
+  kind: 0
+  url: ""
+  file_id: 1
+  created_by_id: 3
+  created: 2018-12-01 15:13:12
+  updated: 2018-12-01 15:13:12

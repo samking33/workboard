@@ -29,7 +29,30 @@ import (
 // response as an attachment download: http.ServeContent for seekable local files
 // (Range + If-Modified-Since for free), a manual 304 + io.Copy otherwise. It does
 // not close the reader; the caller owns it.
+// WriteFilePreview serves a file inline so the browser can render it in place.
+//
+// The real protection is the caller's mime allowlist: bytes we refuse never
+// reach this function, so an uploaded .html is never rendered as a document on
+// our origin. The CSP here only covers direct navigation to this endpoint — the
+// web client fetches the body over XHR and renders it from a blob URL, and
+// response headers do not follow a blob. Do not treat it as a substitute for
+// the allowlist.
+func WriteFilePreview(w http.ResponseWriter, r *http.Request, f *files.File) {
+	w.Header().Set("Content-Security-Policy",
+		"default-src 'none'; img-src 'self' data: blob:; media-src 'self' blob:; style-src 'unsafe-inline'; sandbox")
+	w.Header().Set("Content-Disposition",
+		mime.FormatMediaType("inline", map[string]string{"filename": f.Name}))
+	writeFile(w, r, f)
+}
+
 func WriteFileDownload(w http.ResponseWriter, r *http.Request, f *files.File) {
+	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": f.Name}))
+	writeFile(w, r, f)
+}
+
+// writeFile emits the body and the headers common to inline and attachment
+// responses. The caller owns Content-Disposition.
+func writeFile(w http.ResponseWriter, r *http.Request, f *files.File) {
 	// Downloads must never be cached. no-cache overrides the global no-store
 	// directive so revalidation (If-Modified-Since) still works.
 	w.Header().Set("Cache-Control", "no-cache")
@@ -38,7 +61,6 @@ func WriteFileDownload(w http.ResponseWriter, r *http.Request, f *files.File) {
 	if mimeToReturn == "" {
 		mimeToReturn = "application/octet-stream"
 	}
-	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": f.Name}))
 	w.Header().Set("Content-Type", mimeToReturn)
 	// Never let the browser sniff a type other than the one we detected.
 	w.Header().Set("X-Content-Type-Options", "nosniff")

@@ -7,11 +7,33 @@
 			class="tiptap__wrapper"
 			:class="{'tiptap__wrapper-is-editing': isEditing}"
 		>
+			<div
+				v-if="isEditing"
+				class="tiptap__toolbar-toggle"
+			>
+				<BaseButton
+					v-tooltip="toolbarVisible ? $t('input.editor.hideToolbar') : $t('input.editor.showToolbar')"
+					:aria-label="toolbarVisible ? $t('input.editor.hideToolbar') : $t('input.editor.showToolbar')"
+					:aria-expanded="toolbarVisible"
+					class="tiptap__toolbar-toggle-button"
+					@click="toolbarVisible = !toolbarVisible"
+				>
+					<Icon :icon="['fas', 'font']" />
+					<!-- chevron-up isn't in the tree-shaken icon set; rotating the
+						 down one keeps the bundle from growing for one glyph. -->
+					<Icon
+						:icon="['fas', 'chevron-down']"
+						class="tiptap__toolbar-toggle-caret"
+						:class="{'tiptap__toolbar-toggle-caret--open': toolbarVisible}"
+					/>
+				</BaseButton>
+			</div>
+
 			<!-- Using v-show instead of v-if to avoid unmounting which causes race condition
 			 with tiptap's DOM manipulation. See: https://github.com/ueberdosis/tiptap/issues/7342 -->
 			<EditorToolbar
 				v-if="editor"
-				v-show="isEditing"
+				v-show="isEditing && toolbarVisible"
 				:editor="editor"
 				@imageUploadClicked="triggerImageInput"
 			/>
@@ -177,6 +199,7 @@
 <script setup lang="ts">
 import {computed, nextTick, onBeforeUnmount, onMounted, ref, watch, watchEffect} from 'vue'
 import {useI18n} from 'vue-i18n'
+import {useLocalStorage} from '@vueuse/core'
 import {eventToShortcutString} from '@/helpers/shortcut'
 
 import EditorToolbar from './EditorToolbar.vue'
@@ -360,6 +383,11 @@ type Mode = 'edit' | 'preview'
 
 const internalMode = ref<Mode>('preview')
 const isEditing = computed(() => internalMode.value === 'edit' && props.isEditEnabled)
+
+// Off by default: the formatting bar is rarely needed for a comment, and most
+// formatting is reachable from the selection bubble menu and markdown shortcuts.
+// Remembered per browser so anyone who does want it keeps it.
+const toolbarVisible = useLocalStorage('editorToolbarVisible', false)
 const contentHasChanged = ref<boolean>(false)
 
 // TipTap crashes when inserting an image into an empty editor.
@@ -1016,6 +1044,37 @@ watch(
 </script>
 
 <style lang="scss">
+.tiptap__toolbar-toggle {
+	display: flex;
+	justify-content: flex-end;
+	margin-bottom: .25rem;
+}
+
+.tiptap__toolbar-toggle-button {
+	display: inline-flex;
+	align-items: center;
+	gap: .35rem;
+	padding: .15rem .45rem;
+	border-radius: $radius;
+	color: var(--grey-500);
+	font-size: .8rem;
+	line-height: 1;
+
+	&:hover {
+		color: var(--primary);
+		background: var(--grey-100);
+	}
+}
+
+.tiptap__toolbar-toggle-caret {
+	font-size: .7em;
+	transition: transform $transition;
+}
+
+.tiptap__toolbar-toggle-caret--open {
+	transform: rotate(180deg);
+}
+
 .tiptap__wrapper {
 	// Transparent until focused so the box size never changes and the page stays flat, same pattern as .input.title
 	border: 1px solid transparent;

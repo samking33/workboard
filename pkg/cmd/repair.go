@@ -28,7 +28,7 @@ var repairCmd = &cobra.Command{
 	Use:   "repair",
 	Short: "Repair and fix data integrity issues",
 	Long: `The repair command provides subcommands to detect and fix various
-data integrity issues in your Vikunja installation.
+data integrity issues in your FSOC installation.
 
 Available repair operations:
   task-positions   - Fix duplicate task positions in project views

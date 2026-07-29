@@ -1,62 +1,80 @@
-<img src="https://vikunja.io/images/vikunja-logo.svg" alt="" style="display: block;width: 50%;margin: 0 auto;" width="50%"/>
+# FSOC
 
-[![Build Status](https://github.com/go-vikunja/vikunja/actions/workflows/ci.yml/badge.svg)](https://github.com/go-vikunja/vikunja/actions/workflows/ci.yml)
-[![License: AGPL-3.0-or-later](https://img.shields.io/badge/License-AGPL--3.0--or--later-blue.svg)](LICENSE)
-[![Install](https://img.shields.io/badge/download-v2.4.0-brightgreen.svg)](https://vikunja.io/docs/installing)
-[![Docker Pulls](https://img.shields.io/docker/pulls/vikunja/vikunja.svg)](https://hub.docker.com/r/vikunja/vikunja/)
-[![Swagger Docs](https://img.shields.io/badge/swagger-docs-brightgreen.svg)](https://try.vikunja.io/api/v1/docs)
-[![Go Report Card](https://goreportcard.com/badge/code.vikunja.io/api)](https://goreportcard.com/report/code.vikunja.io/api)
+Projects, tasks and **project storage** for the team. Every project keeps its
+documents, links, images and videos alongside its work, with previews in the
+browser.
 
-# Vikunja
+FSOC is a fork of [Vikunja](https://vikunja.io) v2.4.0 and is licensed under the
+same **AGPL-3.0-or-later**. Upstream copyright notices are intact and the source
+stays available, as that licence requires.
 
-> The Todo-app to organize your life.
+## What this fork adds
 
-If Vikunja is useful to you, please consider [buying me a coffee](https://www.buymeacoffee.com/kolaente), [sponsoring me on GitHub](https://github.com/sponsors/kolaente) or buying [a sticker pack](https://vikunja.io/stickers).
-I'm also offering [a hosted version of Vikunja](https://vikunja.cloud/) if you want a hassle-free solution for yourself or your team.
+| | |
+|---|---|
+| **Storage view** | A tab on every project — Documents / Links / Images / Videos — with drag-and-drop upload, in-browser previews (PDF, image, video, audio, text), rename and delete. It is the first tab, ahead of List. |
+| **Access tab** | Per-project membership beside the view tabs, visible only to project admins. |
+| **Collapsible editor toolbar** | The rich-text toolbar is hidden behind a small toggle instead of always on. |
+| **Dismissible task fields** | Sections opened by mistake in the task sidebar can be closed with a × instead of needing a reload. |
+| **FSOC branding** | Marks, titles, emails, CLI and API docs. |
 
-## Table of contents
+## Layout
 
-- [Security Reports](#security-reports)
-- [Features](#features)
-- [Docs](#docs)
-	- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [License](#license)
-	- [Unsplash Images](#unsplash-images)
+```
+pkg/                 Go API (models, migrations, /api/v2 routes)
+frontend/            Vue 3 client, embedded into the binary at build time
+deploy/              Everything needed to run it in production
+```
 
-## Security Reports
+## Build
 
-If you find any security-related issues you don't want to disclose publicly, please use [the contact information on our website](https://vikunja.io/contact/#security).
+Requires Go 1.26+, Node 24+ and pnpm.
 
-## Features
+```bash
+TARGET=linux/amd64 ./deploy/build-release.sh
+```
 
-See [the features page](https://vikunja.io/features/) on our website for a more exhaustive list or 
-try it on [try.vikunja.io](https://try.vikunja.io)!
+Produces a single static binary in `deploy/dist/` with the frontend embedded —
+no Node or Go runtime needed on the server. Build for `linux/amd64` when
+deploying to a Linux host, even from a Mac.
 
-## Docs
+## Deploy
 
-* [Installing](https://vikunja.io/docs/installing/)
-* [Build from source](https://vikunja.io/docs/build-from-sources/)
-* [Development setup](https://vikunja.io/docs/development/)
-* [Magefile](https://vikunja.io/docs/magefile/)
-* [Testing](https://vikunja.io/docs/testing/)
+See **[deploy/README.md](deploy/README.md)** for the full walkthrough: MySQL
+setup, environment variables, systemd unit, nginx with TLS, migrating data, and
+backups.
 
-All docs can be found on [the Vikunja home page](https://vikunja.io/docs/).
+The short version:
 
-### Roadmap
+```bash
+TARGET=linux/amd64 ./deploy/build-release.sh   # build
+# copy deploy/dist/* to the server
+# fill /etc/vikunja/vikunja.env  (db creds + session secret)
+sudo systemctl enable --now vikunja
+```
 
-See [the roadmap](https://my.vikunja.cloud/share/QFyzYEmEYfSyQfTOmIRSwLUpkFjboaBqQCnaPmWd/auth) (hosted on Vikunja!) for more!
+## Local development
 
-## Contributing
+```bash
+cd frontend && pnpm install && pnpm build
+cd .. && go build -tags osusergo -o fsoc .
+./fsoc                      # needs a config.yml or VIKUNJA_* env vars
+```
 
-Please check out the contribution guidelines on [the website](https://vikunja.io/docs/development/).
+Config is read from `config.yml` next to the binary, or from `VIKUNJA_*`
+environment variables which override it. Secrets belong in the environment,
+never in a committed file — `config.yml`, `*.db` and `files/` are gitignored.
 
-## License
+## Tests
 
-Most of this repository is licensed under [AGPL‑3.0‑or‑later](LICENSE).
-The contents of [`desktop/`](desktop/) are licensed under
-[GPL‑3.0‑or‑later](desktop/LICENSE).
+```bash
+mage test:feature                        # Go suite
+go test -run TestHumaStorageItem ./pkg/webtests/
+cd frontend && pnpm lint && pnpm typecheck
+```
 
-### Unsplash Images
+## Licence
 
-Background images from Unsplash are distributed under the [Unsplash License](https://unsplash.com/license). The license requires giving credit to the photographer and Unsplash. See [Unsplash’s terms](https://unsplash.com/terms) for more information.
+AGPL-3.0-or-later, inherited from Vikunja. See [LICENSE](LICENSE). If you run a
+modified copy as a network service, that licence requires you to offer its
+source to users.

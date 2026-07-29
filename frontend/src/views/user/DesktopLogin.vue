@@ -46,7 +46,7 @@
 				class="is-fullwidth mbe-2"
 				@click="loginWithServer('https://app.vikunja.cloud')"
 			>
-				Vikunja Cloud
+				FSOC Cloud
 			</XButton>
 			<XButton
 				:loading="waitingForAuth"

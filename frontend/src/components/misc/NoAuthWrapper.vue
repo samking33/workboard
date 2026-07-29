@@ -84,8 +84,7 @@ useTitle(() => title.value)
 
 <style lang="scss" scoped>
 .no-auth-wrapper {
-	background: var(--site-background) url("@/assets/llama.svg?url") no-repeat
-		fixed bottom left;
+	background: var(--site-background);
 	min-block-size: 100vh;
 	display: flex;
 	flex-direction: column;
@@ -122,15 +121,16 @@ useTitle(() => title.value)
 	}
 
 	@media screen and (min-width: $tablet) {
-		background: url("@/assets/no-auth-image.jpg") no-repeat bottom/cover;
+		background:
+			radial-gradient(120% 80% at 15% 0%, #4d8dff 0%, transparent 60%),
+			linear-gradient(160deg, #196aff 0%, #0b3fa8 55%, #082a6e 100%);
 		position: relative;
 
 		&.has-message {
 			justify-content: space-between;
 		}
 
-		// Darken mainly the lower part of the photo where the white heading sits so
-		// the text keeps a reliable contrast ratio across the whole image.
+		// Keeps the white heading legible over the lighter top-left of the gradient.
 		&::before {
 			content: "";
 			position: absolute;
@@ -140,9 +140,9 @@ useTitle(() => title.value)
 			inset-block-end: 0;
 			background-image: linear-gradient(
 				to top,
-				rgba(0, 0, 0, 0.7) 0%,
-				rgba(0, 0, 0, 0.4) 35%,
-				rgba(0, 0, 0, 0.15) 100%
+				rgba(0, 0, 0, 0.45) 0%,
+				rgba(0, 0, 0, 0.2) 40%,
+				rgba(0, 0, 0, 0) 100%
 			);
 		}
 

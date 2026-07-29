@@ -31,7 +31,7 @@ var (
 
 // PrintResults writes all check groups to the given writer with colored output.
 func PrintResults(w io.Writer, groups []CheckGroup) {
-	fmt.Fprintln(w, bold("Vikunja Doctor"))
+	fmt.Fprintln(w, bold("FSOC Doctor"))
 	fmt.Fprintln(w, "==============")
 	fmt.Fprintln(w)
 

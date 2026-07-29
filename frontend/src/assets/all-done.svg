@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" role="img" viewBox="0 0 240 160" width="240" height="160">
+  <title>Nothing left to do</title>
+  <desc>An empty checklist with every item ticked off.</desc>
+  <rect x="46" y="18" width="148" height="124" rx="12" fill="none" stroke="currentColor" stroke-width="4" opacity=".25"/>
+  <g stroke="#196aff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M70 52l9 9 18-18"/>
+    <path d="M70 88l9 9 18-18"/>
+    <path d="M70 124l9 9 18-18"/>
+  </g>
+  <g fill="currentColor" opacity=".2">
+    <rect x="112" y="47" width="58" height="7" rx="3.5"/>
+    <rect x="112" y="83" width="46" height="7" rx="3.5"/>
+    <rect x="112" y="119" width="52" height="7" rx="3.5"/>
+  </g>
+</svg>
