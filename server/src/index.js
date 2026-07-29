@@ -9,6 +9,7 @@ import {config} from './lib/config.js'
 import {startCron} from './lib/cron.js'
 import {ping} from './lib/db.js'
 import {attachRealtime} from './lib/realtime.js'
+import {ensureSchema} from './lib/schema.js'
 import {accountRouter, publicAccountRouter} from './routes/account.js'
 import {adminRouter} from './routes/admin.js'
 import {authRouter} from './routes/auth.js'
@@ -149,6 +150,9 @@ const server = app.listen(config.port, async () => {
 	try {
 		const version = await ping()
 		console.log(`[fsoc] database ok (${version})`)
+		// A fresh database has no tables; create them here rather than in the build
+		// phase, which often has no credentials.
+		await ensureSchema()
 	} catch (err) {
 		// Loud and specific: a 503 from a proxy looks the same whether the process
 		// died or the database is simply unreachable, and on a managed host the

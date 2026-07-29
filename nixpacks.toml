@@ -10,9 +10,9 @@ nixPkgs = ['nodejs_20']
 cmds = ['npm --prefix server install --omit=dev']
 
 [phases.build]
-# The web client is committed already built, so the only step is making sure the
-# schema exists. Idempotent: creates it on a fresh database, no-op otherwise.
-cmds = ['npm --prefix server run db:init']
+# Nothing to build: the web client is committed already built, and the schema is
+# created at startup instead — a build phase often has no database credentials.
+cmds = ['echo "no build step required"']
 
 [start]
 cmd = 'node server/src/index.js'

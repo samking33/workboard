@@ -8,7 +8,7 @@
 	},
 	"scripts": {
 		"install-deps": "npm --prefix server install --omit=dev",
-		"build": "npm --prefix server install --omit=dev && npm --prefix server run db:init",
+		"build": "npm --prefix server install --omit=dev",
 		"db:init": "npm --prefix server run db:init",
 		"create-admin": "npm --prefix server run create-admin --",
 		"start": "node server/src/index.js"

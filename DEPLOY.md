@@ -32,7 +32,12 @@ room to guess:
 | `.slugignore` | keeps `desktop/`, `pkg/` and `frontend/src/` out of detection |
 
 If your platform lets you set an **app root** or **base directory**, set it to
-the repository root — not `frontend/` and not `desktop/`.
+the repository root — leave it blank, or `/`. Not a subdirectory.
+
+If it reports **"package.json is missing from the project root"**, the app root
+is pointing at a directory that has none. `package.json` is at the top of this
+repository; check the setting rather than adding a second one further down, since
+a `package.json` in a subdirectory will describe the wrong application.
 
 ### If you see a pnpm version error
 
@@ -60,15 +65,23 @@ allowlist. `/api/v1/health` is the endpoint to point a monitor at.
 The Go server built its schema through 129 migrations. This server has no
 migration runner, so a fresh database is created from `server/schema.sql`:
 
+**The server does this itself on startup.** If it finds no tables it creates
+them and logs `the database is empty — creating the schema`. On an existing
+database it costs one `SHOW TABLES` and does nothing.
+
+This happens at startup rather than during the build on purpose: a build phase
+often has no database credentials, since many platforms only inject environment
+variables at runtime. Putting it in the build turns a missing variable into a
+failed deploy.
+
+All you have to do is create the first account:
+
 ```bash
-npm run db:init                                    # creates the 38 tables
 npm run create-admin -- alice alice@example.com 'a good password'
 ```
 
-`db:init` runs automatically as part of `npm run build`, so a deploy against an
-empty database sets itself up. It is idempotent — every statement is
-`IF NOT EXISTS` or `INSERT IGNORE` — so it is safe on an existing database and
-reports "schema was already current".
+`npm run db:init` exists to apply the schema by hand if you would rather not
+wait for the first boot. It is idempotent either way.
 
 **Registration is off by default**, so without `create-admin` a new instance has
 no way to log in. The first account it makes is an administrator with an Inbox
